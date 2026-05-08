@@ -1,0 +1,206 @@
+import { useState, useMemo, useEffect, useCallback } from "react";
+import RestaurantCard from "@/components/RestaurantCard";
+import CategoryChip from "@/components/CategoryChip";
+import Navbar from "@/components/Navbar";
+import { motion } from "framer-motion";
+import { Search, SlidersHorizontal, ChevronDown, RefreshCw } from "lucide-react";
+import * as api from "@/api";
+import { Skeleton } from "@/components/ui/skeleton";
+import Footer from "@/components/Footer";
+
+type SortOption = "rating" | "deliveryTime" | "priceForTwo" | "distance";
+
+const Restaurants = () => {
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [vegOnly, setVegOnly] = useState(false);
+  const [nonVegOnly, setNonVegOnly] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState<SortOption>("rating");
+  const [search, setSearch] = useState("");
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [restRes, catRes]: any = await Promise.all([
+        api.getRestaurants(),
+        api.getCategories()
+      ]);
+      
+      if (restRes.status === 'success') setRestaurants(restRes.data);
+      if (catRes.status === 'success') setCategories(catRes.data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load restaurants. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const filtered = useMemo(() => {
+    let list = [...restaurants];
+    if (vegOnly) list = list.filter((r) => r.isVeg);
+    if (nonVegOnly) list = list.filter((r) => !r.isVeg);
+    if (minRating > 0) list = list.filter((r) => r.rating >= minRating);
+    if (activeCategory) {
+      list = list.filter((r) =>
+        r.cuisines?.some((c: string) => c.toLowerCase().includes(activeCategory.toLowerCase()))
+      );
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((r) => 
+        r.name.toLowerCase().includes(q) || 
+        r.cuisines?.some((c: string) => c.toLowerCase().includes(q))
+      );
+    }
+    list.sort((a, b) => {
+      if (sortBy === "rating") return b.rating - a.rating;
+      if (sortBy === "priceForTwo") return a.priceForTwo - b.priceForTwo;
+      if (sortBy === "distance") return parseFloat(a.distance || "0") - parseFloat(b.distance || "0");
+      return parseInt(a.deliveryTime || "0") - parseInt(b.deliveryTime || "0");
+    });
+    return list;
+  }, [restaurants, vegOnly, nonVegOnly, minRating, sortBy, search, activeCategory]);
+
+  return (
+    <div className="min-h-screen bg-background pb-20 lg:pb-0">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 mt-4">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Restos in Coimbatore</h1>
+            <p className="text-muted-foreground text-sm flex items-center gap-1.5 font-medium">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              {filtered.length} locations currently delivering
+            </p>
+          </motion.div>
+
+          <div className="relative w-full max-w-md group">
+            <div className="relative flex items-center w-full bg-white rounded-2xl border border-gray-100 shadow-sm focus-within:shadow-md transition-all overflow-hidden p-1">
+              <div className="pl-3">
+                <Search className="w-4 h-4 text-gray-400 group-focus-within:text-primary" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search cuisines or restaurants..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-3 pr-4 py-3 bg-transparent text-sm outline-none text-gray-900 placeholder:text-gray-400 font-medium"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-4 overflow-hidden">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-100" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">Filter by Cuisine</span>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-100" />
+          </div>
+          <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x">
+            {loading && categories.length === 0 ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-24 rounded-full flex-shrink-0" />
+                ))
+            ) : categories.map((cat) => (
+              <CategoryChip
+                key={cat._id || cat.id}
+                category={cat}
+                isActive={activeCategory === cat.name}
+                onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mb-10 pb-6 border-b border-gray-50">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 w-full">
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl mr-2">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">Filters</span>
+            </div>
+
+            <button
+              onClick={() => { setVegOnly(!vegOnly); setNonVegOnly(false); }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${
+                vegOnly ? "bg-green-50 border-green-200 text-green-700 shadow-md" : "bg-white border-gray-200 text-gray-600"
+              }`}
+            >
+              Veg Only
+            </button>
+
+            <button
+              onClick={() => { setNonVegOnly(!nonVegOnly); setVegOnly(false); }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${
+                nonVegOnly ? "bg-red-50 border-red-200 text-red-700 shadow-md" : "bg-white border-gray-200 text-gray-600"
+              }`}
+            >
+              Non Veg
+            </button>
+
+            <button
+              onClick={() => setMinRating(minRating === 4 ? 0 : 4)}
+              className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${
+                minRating === 4 ? "bg-orange-50 border-orange-200 text-orange-700 shadow-md" : "bg-white border-gray-200 text-gray-600"
+              }`}
+            >
+              ★ 4.0+
+            </button>
+          </div>
+
+          <div className="relative group w-full lg:w-auto min-w-[200px]">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="appearance-none w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 pr-10 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer shadow-sm transition-all"
+            >
+              <option value="rating">Sort by: Customer Rating</option>
+              <option value="deliveryTime">Sort by: Delivery Time</option>
+              <option value="priceForTwo">Sort by: Price (Low to High)</option>
+              <option value="distance">Sort by: Distance</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {loading && restaurants.length === 0 ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="h-48 w-full rounded-2xl" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))
+          ) : error ? (
+            <div className="col-span-full text-center py-20">
+              <div className="bg-red-50 px-8 py-10 rounded-[2.5rem] border border-red-100 inline-flex flex-col items-center gap-6 max-w-md shadow-sm">
+                <RefreshCw className="w-12 h-12 text-red-500" />
+                <h3 className="text-xl font-black text-gray-900">Oops! Failed to load</h3>
+                <p className="text-red-500/80 font-medium text-sm">{error}</p>
+                <button onClick={loadData} className="gradient-primary text-white px-8 py-3 rounded-2xl font-black">
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            filtered.map((r, i) => (
+              <RestaurantCard key={r._id || r.id} restaurant={r} index={i} />
+            ))
+          )}
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+export default Restaurants;
