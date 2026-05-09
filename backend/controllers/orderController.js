@@ -18,7 +18,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     phone, 
     paymentMethod,
     paymentId,
-    paymentStatus
+    paymentStatus,
+    restaurantId,
+    restaurantName
   } = req.body;
 
   // 1. Validation
@@ -37,6 +39,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     paymentStatus: paymentStatus || (paymentMethod === "cod" ? "COD" : "Pending"),
     email: email || req.user?.email,
     phone: phone || req.user?.phone,
+    restaurantId: restaurantId || items[0]?.restaurantId || null,
+    restaurantName: restaurantName || items[0]?.restaurantName || null,
     status: "Placed"
   };
 

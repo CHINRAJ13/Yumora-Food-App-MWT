@@ -4,6 +4,14 @@ const orderSchema = new mongoose.Schema({
   userId: String,
   email: String,
   phone: String,
+  restaurantId: {
+    type: String,
+    default: null
+  },
+  restaurantName: {
+    type: String,
+    default: null
+  },
   items: Array,
   totalAmount: Number,
   address: String,
@@ -20,8 +28,34 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Placed", "Preparing", "Out for Delivery", "Delivered"],
+    enum: ["Placed", "Preparing", "Ready for Pickup", "Out for Delivery", "Delivered", "Cancelled"],
     default: "Placed"
+  },
+  // Delivery person fields
+  deliveryPersonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  deliveryPersonName: {
+    type: String,
+    default: null
+  },
+  assignedAt: {
+    type: Date,
+    default: null
+  },
+  pickedUpAt: {
+    type: Date,
+    default: null
+  },
+  deliveredAt: {
+    type: Date,
+    default: null
+  },
+  deliveryNotes: {
+    type: String,
+    default: ''
   }
 }, { timestamps: true });
 

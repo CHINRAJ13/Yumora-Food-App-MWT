@@ -3,6 +3,8 @@ import {
   getStats, 
   getAllOrders, 
   updateOrder,
+  assignDeliveryPerson,
+  getDeliveryPersons,
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getAllUsers, updateUserRole,
   getAllCategories, createCategory, deleteCategory,
@@ -22,6 +24,10 @@ router.get('/stats', getStats);
 // Orders
 router.get('/orders', getAllOrders);
 router.patch('/orders/:id', updateOrder);
+router.patch('/orders/:id/assign', assignDeliveryPerson);
+
+// Delivery Persons
+router.get('/delivery-persons', getDeliveryPersons);
 
 // Restaurants
 router.get('/restaurants', getAllRestaurants);
@@ -44,3 +50,4 @@ router.post('/banners', createBanner);
 router.delete('/banners/:id', deleteBanner);
 
 export default router;
+

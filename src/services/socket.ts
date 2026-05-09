@@ -36,6 +36,18 @@ class SocketService {
     }
   }
 
+  joinAdminRoom() {
+    if (this.socket) {
+      this.socket.emit('join_admin');
+    }
+  }
+
+  joinDeliveryRoom() {
+    if (this.socket) {
+      this.socket.emit('join_delivery');
+    }
+  }
+
   onOrderStatusUpdate(callback: (data: { status: string, data: any }) => void) {
     if (this.socket) {
       this.socket.on('order_status_update', callback);
@@ -47,6 +59,61 @@ class SocketService {
       this.socket.off('order_status_update');
     }
   }
+
+  // Delivery-specific events
+  onNewAvailableOrder(callback: (order: any) => void) {
+    if (this.socket) {
+      this.socket.on('new_available_order', callback);
+    }
+  }
+
+  onOrderTaken(callback: (data: { orderId: string }) => void) {
+    if (this.socket) {
+      this.socket.on('order_taken', callback);
+    }
+  }
+
+  onOrderAccepted(callback: (data: { orderId: string, deliveryPerson: any }) => void) {
+    if (this.socket) {
+      this.socket.on('order_accepted', callback);
+    }
+  }
+
+  offDeliveryEvents() {
+    if (this.socket) {
+      this.socket.off('new_available_order');
+      this.socket.off('order_taken');
+      this.socket.off('order_accepted');
+    }
+  }
+
+  // Restaurant-specific events
+  joinRestaurantRoom(restaurantId: string) {
+    if (this.socket) {
+      this.socket.emit('join_restaurant', restaurantId);
+    }
+  }
+
+  onNewRestaurantOrder(callback: (order: any) => void) {
+    if (this.socket) {
+      this.socket.on('new_restaurant_order', callback);
+    }
+  }
+
+  onRestaurantOrderUpdated(callback: (data: { orderId: string; status: string; data: any }) => void) {
+    if (this.socket) {
+      this.socket.on('restaurant_order_updated', callback);
+    }
+  }
+
+  offRestaurantEvents() {
+    if (this.socket) {
+      this.socket.off('new_restaurant_order');
+      this.socket.off('restaurant_order_updated');
+    }
+  }
 }
 
 export const socketService = new SocketService();
+
+

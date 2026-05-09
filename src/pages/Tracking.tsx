@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import * as api from "@/api";
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
-import { ChefHat, Truck, CheckCircle2, Package, ArrowLeft, Timer, MapPin, RefreshCw } from "lucide-react";
+import { ChefHat, Truck, CheckCircle2, Package, ArrowLeft, Timer, MapPin, RefreshCw, Bike, User } from "lucide-react";
 import { socketService } from "@/services/socket";
 import { toast } from "sonner";
 
@@ -113,6 +113,7 @@ const Tracking = () => {
 const STEPS = [
   { id: "Placed", label: "Confirmed", icon: CheckCircle2, desc: "Order received" },
   { id: "Preparing", label: "Preparing", icon: ChefHat, desc: "Chef is cooking" },
+  { id: "Ready for Pickup", label: "Ready", icon: Package, desc: "Waiting for rider" },
   { id: "Out for Delivery", label: "On the Way", icon: Truck, desc: "Rider is nearby" },
   { id: "Delivered", label: "Delivered", icon: CheckCircle2, desc: "Enjoy your meal" },
 ];
@@ -181,6 +182,21 @@ const EnhancedTrackingCard = ({ order }: { order: any }) => {
           })}
         </div>
       </div>
+
+      {/* Delivery Person Info */}
+      {order.deliveryPersonName && (
+        <div className="bg-violet-50/50 rounded-2xl p-4 border border-violet-100 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-2 rounded-xl shadow-sm">
+              <Bike className="w-4 h-4 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Your Rider</p>
+              <p className="text-xs font-bold text-violet-700 mt-0.5">{order.deliveryPersonName}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Address & Delivery Info */}
       <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100">

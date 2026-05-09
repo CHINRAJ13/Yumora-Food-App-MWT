@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAdminUsers, updateAdminUserRole } from "@/api";
+import * as api from "@/api";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,6 +8,7 @@ import {
   Shield,
   ShieldCheck,
   Truck,
+  LayoutDashboard,
   User,
   Mail,
   Phone,
@@ -15,23 +16,26 @@ import {
 
 const roleBadge: Record<string, { bg: string; text: string; icon: any }> = {
   admin: { bg: "bg-red-50", text: "text-red-600", icon: ShieldCheck },
+  restaurant: { bg: "bg-purple-50", text: "text-purple-600", icon: LayoutDashboard },
   delivery: { bg: "bg-blue-50", text: "text-blue-600", icon: Truck },
   user: { bg: "bg-gray-50", text: "text-gray-600", icon: User },
 };
 
 const AdminUsers = () => {
   const [users, setUsers] = useState<any[]>([]);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchUsers();
+    fetchRestaurants();
   }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await getAdminUsers();
+      const res = await api.getAdminUsers();
       setUsers(res.data);
     } catch {
       toast.error("Failed to fetch users");
@@ -40,13 +44,22 @@ const AdminUsers = () => {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const fetchRestaurants = async () => {
     try {
-      await updateAdminUserRole(userId, newRole);
-      toast.success(`Role updated to ${newRole}`);
+      const res = await api.getAdminRestaurants();
+      setRestaurants(res.data);
+    } catch (err) {
+      console.error("Failed to fetch restaurants", err);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string, restaurantId?: string) => {
+    try {
+      await api.updateAdminUserRole(userId, { role: newRole, restaurantId });
+      toast.success(`User updated successfully`);
       fetchUsers();
     } catch {
-      toast.error("Failed to update role");
+      toast.error("Failed to update user");
     }
   };
 
@@ -150,17 +163,37 @@ const AdminUsers = () => {
                         </div>
                       </td>
                       <td className="px-8 py-5">
-                        <select
-                          value={user.role}
-                          onChange={(e) =>
-                            handleRoleChange(user._id, e.target.value)
-                          }
-                          className="text-xs font-bold bg-gray-100 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 cursor-pointer outline-none transition-all"
-                        >
-                          <option value="user">User</option>
-                          <option value="delivery">Delivery</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <select
+                            value={user.role}
+                            onChange={(e) =>
+                              handleRoleChange(user._id, e.target.value, user.restaurantId)
+                            }
+                            className="text-xs font-bold bg-gray-100 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 cursor-pointer outline-none transition-all"
+                          >
+                            <option value="user">User</option>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="delivery">Delivery</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          
+                          {user.role === 'restaurant' && (
+                            <select
+                              value={user.restaurantId || ""}
+                              onChange={(e) =>
+                                handleRoleChange(user._id, user.role, e.target.value)
+                              }
+                              className="text-[10px] font-bold bg-purple-50 text-purple-600 border-none rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-purple-200 cursor-pointer outline-none transition-all"
+                            >
+                              <option value="">Select Restaurant</option>
+                              {restaurants.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   );

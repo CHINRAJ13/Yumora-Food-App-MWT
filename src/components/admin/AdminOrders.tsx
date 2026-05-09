@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
-import { getAdminOrders, updateAdminOrder } from "@/api";
+import { getAdminOrders, updateAdminOrder, getDeliveryPersons, assignDeliveryPerson } from "@/api";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,13 +13,16 @@ import {
   ChefHat,
   Search,
   Filter,
-  Eye
+  Eye,
+  Bike,
+  Package
 } from "lucide-react";
 
 export const StatusBadge = ({ status }: { status: string }) => {
   const configs: any = {
     Placed: { bg: "bg-blue-50", text: "text-blue-600", icon: Clock },
     Preparing: { bg: "bg-orange-50", text: "text-orange-600", icon: ChefHat },
+    "Ready for Pickup": { bg: "bg-amber-50", text: "text-amber-600", icon: Package },
     "Out for Delivery": { bg: "bg-purple-50", text: "text-purple-600", icon: Truck },
     Delivered: { bg: "bg-emerald-50", text: "text-emerald-600", icon: CheckCircle2 },
     Cancelled: { bg: "bg-red-50", text: "text-red-600", icon: XCircle },
@@ -41,11 +44,14 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deliveryPersons, setDeliveryPersons] = useState<any[]>([]);
+  const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     fetchOrders();
+    fetchDeliveryPersons();
 
     // Connect to Socket.io (proxied through Vite in dev)
     const socket = io({
@@ -88,6 +94,15 @@ const AdminOrders = () => {
     }
   };
 
+  const fetchDeliveryPersons = async () => {
+    try {
+      const res: any = await getDeliveryPersons();
+      if (res.status === 'success') setDeliveryPersons(res.data);
+    } catch (err) {
+      console.error('Failed to fetch delivery persons');
+    }
+  };
+
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
       await updateAdminOrder(orderId, newStatus);
@@ -95,6 +110,20 @@ const AdminOrders = () => {
       fetchOrders();
     } catch (err) {
       toast.error("Failed to update status");
+    }
+  };
+
+  const handleAssignRider = async (orderId: string, deliveryPersonId: string) => {
+    if (!deliveryPersonId) return;
+    setAssigningOrder(orderId);
+    try {
+      await assignDeliveryPerson(orderId, deliveryPersonId);
+      toast.success('Rider assigned successfully!');
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign rider');
+    } finally {
+      setAssigningOrder(null);
     }
   };
 
@@ -132,6 +161,7 @@ const AdminOrders = () => {
               <option value="all">All Status</option>
               <option value="Placed">Placed</option>
               <option value="Preparing">Preparing</option>
+              <option value="Ready for Pickup">Ready for Pickup</option>
               <option value="Out for Delivery">Out for Delivery</option>
               <option value="Delivered">Delivered</option>
               <option value="Cancelled">Cancelled</option>
@@ -144,11 +174,12 @@ const AdminOrders = () => {
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50/50 text-left">
-              <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Order Details</th>
-              <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Customer</th>
-              <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Amount</th>
-              <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
-              <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Order Details</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Customer</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Amount</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Rider</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -175,13 +206,41 @@ const AdminOrders = () => {
                       <span className="text-[10px] font-medium text-gray-400 mt-0.5 truncate max-w-[150px]">{order.email}</span>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-6 py-6">
                     <span className="font-black text-gray-900">₹{order.totalAmount}</span>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-6 py-6">
+                    {order.deliveryPersonName ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center">
+                          <Bike className="w-3 h-3 text-violet-600" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{order.deliveryPersonName}</span>
+                      </div>
+                    ) : (
+                      <div>
+                        {(order.status === 'Ready for Pickup' || order.status === 'Preparing') && deliveryPersons.length > 0 ? (
+                          <select
+                            onChange={(e) => handleAssignRider(order._id, e.target.value)}
+                            disabled={assigningOrder === order._id}
+                            className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer outline-none"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Assign Rider</option>
+                            {deliveryPersons.map((dp: any) => (
+                              <option key={dp._id} value={dp._id}>{dp.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-[10px] font-bold text-gray-300">—</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-6">
                     <StatusBadge status={order.status} />
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-6 py-6">
                     <div className="flex items-center gap-2">
                       <select 
                         value={order.status}
@@ -190,6 +249,7 @@ const AdminOrders = () => {
                       >
                         <option value="Placed">Placed</option>
                         <option value="Preparing">Preparing</option>
+                        <option value="Ready for Pickup">Ready for Pickup</option>
                         <option value="Out for Delivery">Out for Delivery</option>
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>

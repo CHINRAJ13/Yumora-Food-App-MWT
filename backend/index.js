@@ -26,6 +26,8 @@ import categoryRoutes from './routes/categories.js';
 import bannerRoutes from './routes/banners.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
+import restaurantDashRoutes from './routes/restaurantDashRoutes.js';
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
@@ -88,6 +90,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/restaurant-dash', restaurantDashRoutes);
 
 // 3. ERROR HANDLING
 app.all('*', (req, res, next) => {

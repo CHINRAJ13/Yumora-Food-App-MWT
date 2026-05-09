@@ -6,7 +6,7 @@ import Restaurant from '../models/Restaurant.js';
 import User from '../models/User.js';
 import Category from '../models/Category.js';
 import Banner from '../models/Banner.js';
-import { emitOrderUpdate } from '../socket.js';
+import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted } from '../socket.js';
 
 /**
  * @desc    Get dashboard stats
@@ -59,7 +59,61 @@ export const updateOrder = asyncHandler(async (req, res, next) => {
   // Emit real-time update to customer & admin listeners
   emitOrderUpdate(id, status, order);
 
+  // Notify delivery riders when order becomes ready for pickup
+  if (status === 'Ready for Pickup') {
+    emitNewAvailableOrder(order);
+  }
+
   sendResponse(res, 200, 'Order updated successfully', order);
+});
+
+/**
+ * @desc    Assign a delivery person to an order
+ * @route   PATCH /api/admin/orders/:id/assign
+ * @access  Admin
+ */
+export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { deliveryPersonId } = req.body;
+
+  if (!deliveryPersonId) {
+    return next(new AppError('Delivery person ID is required', 400));
+  }
+
+  const deliveryPerson = await User.findById(deliveryPersonId);
+  if (!deliveryPerson || deliveryPerson.role !== 'delivery') {
+    return next(new AppError('Invalid delivery person', 400));
+  }
+
+  const order = await Order.findByIdAndUpdate(
+    id,
+    {
+      deliveryPersonId: deliveryPerson._id,
+      deliveryPersonName: deliveryPerson.name,
+      status: 'Out for Delivery',
+      assignedAt: new Date()
+    },
+    { new: true }
+  );
+
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  emitOrderAccepted(id, { _id: deliveryPerson._id, name: deliveryPerson.name });
+  emitOrderUpdate(id, 'Out for Delivery', order);
+
+  sendResponse(res, 200, 'Delivery person assigned successfully', order);
+});
+
+/**
+ * @desc    Get all users with delivery role
+ * @route   GET /api/admin/delivery-persons
+ * @access  Admin
+ */
+export const getDeliveryPersons = asyncHandler(async (req, res, next) => {
+  const deliveryPersons = await User.find({ role: 'delivery' }).select('name email phone');
+  sendResponse(res, 200, 'Delivery persons retrieved', deliveryPersons);
 });
 
 // --- Restaurants ---
@@ -96,9 +150,13 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
 });
 
 export const updateUserRole = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true });
+  const { role, restaurantId } = req.body;
+  const updateData = { role };
+  if (restaurantId !== undefined) updateData.restaurantId = restaurantId;
+
+  const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
   if (!user) return next(new AppError('User not found', 404));
-  sendResponse(res, 200, 'User role updated', user);
+  sendResponse(res, 200, 'User updated successfully', user);
 });
 
 // --- Categories ---

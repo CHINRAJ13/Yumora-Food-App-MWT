@@ -21,7 +21,20 @@ const RestaurantSchema = new mongoose.Schema({
   isVeg: { type: Boolean, required: true },
   priceForTwo: { type: Number },
   distance: { type: String },
-  menu: [MenuItemSchema]
+  menu: [MenuItemSchema],
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  acceptsOrders: {
+    type: Boolean,
+    default: true
+  }
 }, { timestamps: true });
 
 // Ensure id is returned in JSON

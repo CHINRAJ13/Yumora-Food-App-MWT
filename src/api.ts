@@ -62,7 +62,7 @@ export const updateAdminRestaurant = (id: string, data: any) => api.put(`/admin/
 export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaurants/${id}`);
 
 export const getAdminUsers = () => api.get("/admin/users");
-export const updateAdminUserRole = (id: string, role: string) => api.patch(`/admin/users/${id}/role`, { role });
+export const updateAdminUserRole = (id: string, data: { role: string; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
 
 export const getAdminCategories = () => api.get("/admin/categories");
 export const createAdminCategory = (data: any) => api.post("/admin/categories", data);
@@ -71,3 +71,27 @@ export const deleteAdminCategory = (id: string) => api.delete(`/admin/categories
 export const getAdminBanners = () => api.get("/admin/banners");
 export const createAdminBanner = (data: any) => api.post("/admin/banners", data);
 export const deleteAdminBanner = (id: string) => api.delete(`/admin/banners/${id}`);
+
+// Delivery Person Methods
+export const getAvailableOrders = () => api.get("/delivery/available");
+export const getMyActiveDeliveries = () => api.get("/delivery/my-active");
+export const getMyDeliveryHistory = () => api.get("/delivery/my-history");
+export const getDeliveryStats = () => api.get("/delivery/stats");
+export const acceptDeliveryOrder = (id: string) => api.patch(`/delivery/accept/${id}`);
+export const pickupDeliveryOrder = (id: string) => api.patch(`/delivery/pickup/${id}`);
+export const completeDeliveryOrder = (id: string) => api.patch(`/delivery/complete/${id}`);
+
+// Admin - Delivery assignment
+export const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) =>
+  api.patch(`/admin/orders/${orderId}/assign`, { deliveryPersonId });
+export const getDeliveryPersons = () => api.get("/admin/delivery-persons");
+
+// Restaurant Dashboard Methods
+export const getRestaurantProfile = () => api.get("/restaurant-dash/profile");
+export const getRestaurantOrders = (status?: string) => api.get(`/restaurant-dash/orders${status ? `?status=${status}` : ''}`);
+export const getRestaurantActiveOrders = () => api.get("/restaurant-dash/orders/active");
+export const updateRestaurantOrderStatus = (id: string, status: string) => api.patch(`/restaurant-dash/orders/${id}/status`, { status });
+export const getRestaurantStats = () => api.get("/restaurant-dash/stats");
+export const getRestaurantMenu = () => api.get("/restaurant-dash/menu");
+export const updateRestaurantMenu = (menu: any[]) => api.put("/restaurant-dash/menu", { menu });
+export const toggleRestaurantStatus = () => api.patch("/restaurant-dash/toggle-status");

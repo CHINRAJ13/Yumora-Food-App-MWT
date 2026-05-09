@@ -126,7 +126,9 @@ const Checkout = () => {
         address: fullAddress,
         phone: data.phone,
         email: data.email,
-        paymentMethod: "online"
+        paymentMethod: "online",
+        restaurantId: items[0]?.restaurantId || null,
+        restaurantName: items[0]?.restaurantName || null
       });
 
       const options = {
@@ -184,7 +186,9 @@ const Checkout = () => {
         address: fullAddress,
         phone: data.phone,
         email: data.email,
-        paymentMethod: "cod"
+        paymentMethod: "cod",
+        restaurantId: items[0]?.restaurantId || null,
+        restaurantName: items[0]?.restaurantName || null
       });
 
       if (res.status === 'success') {

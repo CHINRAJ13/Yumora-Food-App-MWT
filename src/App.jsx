@@ -18,6 +18,8 @@ import Offers from "./pages/Offers";
 import Login from "./pages/Login";
 import Tracking from "./pages/Tracking";
 import AdminDashboard from "./pages/AdminDashboard";
+import DeliveryDashboard from "./pages/DeliveryDashboard";
+import RestaurantDashboard from "./pages/RestaurantDashboard";
 import NotFound from "./pages/NotFound";
 
 // Components
@@ -76,6 +78,22 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/delivery" 
+                element={
+                  <ProtectedRoute roles={["delivery"]}>
+                    <DeliveryDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/restaurant" 
+                element={
+                  <ProtectedRoute roles={["restaurant"]}>
+                    <RestaurantDashboard />
                   </ProtectedRoute>
                 } 
               />

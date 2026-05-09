@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, MapPin, User, ClipboardList, Tag, Home, Menu, X, LogOut } from "lucide-react";
+import { ShoppingCart, MapPin, User, ClipboardList, Tag, Home, Menu, X, LogOut, Bike, LayoutDashboard } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,11 +13,25 @@ const Navbar = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navLinks = [
+  const baseLinks = [
     { to: "/", label: "Home", icon: Home },
     { to: "/orders", label: "Orders", icon: ClipboardList },
     { to: "/offers", label: "Offers", icon: Tag },
   ];
+
+  // Add role-specific links
+  const roleLinks = [];
+  if (user?.role === 'delivery') {
+    roleLinks.push({ to: "/delivery", label: "Deliveries", icon: Bike });
+  }
+  if (user?.role === 'admin') {
+    roleLinks.push({ to: "/admin", label: "Admin", icon: LayoutDashboard });
+  }
+  if (user?.role === 'restaurant') {
+    roleLinks.push({ to: "/restaurant", label: "Dashboard", icon: LayoutDashboard });
+  }
+
+  const navLinks = [...baseLinks, ...roleLinks];
 
   const handleLogout = async () => {
     await logout();

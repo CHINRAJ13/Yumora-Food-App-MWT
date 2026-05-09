@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register, setAuth, isAuthenticated } = useAuthStore();
+  const { login, register, setAuth, isAuthenticated, user } = useAuthStore();
   
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -30,11 +30,20 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const returnUrl = location.state?.from || "/";
-      navigate(returnUrl);
+    if (isAuthenticated && user) {
+      // Role-based redirect after login
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else if (user.role === 'delivery') {
+        navigate('/delivery');
+      } else if (user.role === 'restaurant') {
+        navigate('/restaurant');
+      } else {
+        const returnUrl = location.state?.from || "/";
+        navigate(returnUrl);
+      }
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, navigate, location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

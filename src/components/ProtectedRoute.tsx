@@ -4,9 +4,10 @@ import { useAuthStore } from '@/store/useAuthStore';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   roles?: string[];
+  requiredRole?: string;
 }
 
-const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) => {
   const { isAuthenticated, user, loading } = useAuthStore();
   const location = useLocation();
 
@@ -18,7 +19,14 @@ const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (roles && user && !roles.includes(user.role)) {
+  // Unify role checking: support both 'roles' array and 'requiredRole' string
+  const allowedRoles = roles || (requiredRole ? [requiredRole] : null);
+
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    // Redirect to appropriate dashboard based on actual role
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
+    if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
     return <Navigate to="/" replace />;
   }
 
@@ -26,3 +34,4 @@ const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
 };
 
 export default ProtectedRoute;
+
