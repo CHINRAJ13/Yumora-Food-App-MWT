@@ -55,3 +55,19 @@ export const updateOrderStatus = (id: string, status: string) => api.patch(`/ord
 export const getAdminStats = () => api.get("/admin/stats");
 export const getAdminOrders = () => api.get("/admin/orders");
 export const updateAdminOrder = (id: string, status: string) => api.patch(`/admin/orders/${id}`, { status });
+
+export const getAdminRestaurants = () => api.get("/admin/restaurants");
+export const createAdminRestaurant = (data: any) => api.post("/admin/restaurants", data);
+export const updateAdminRestaurant = (id: string, data: any) => api.put(`/admin/restaurants/${id}`, data);
+export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaurants/${id}`);
+
+export const getAdminUsers = () => api.get("/admin/users");
+export const updateAdminUserRole = (id: string, role: string) => api.patch(`/admin/users/${id}/role`, { role });
+
+export const getAdminCategories = () => api.get("/admin/categories");
+export const createAdminCategory = (data: any) => api.post("/admin/categories", data);
+export const deleteAdminCategory = (id: string) => api.delete(`/admin/categories/${id}`);
+
+export const getAdminBanners = () => api.get("/admin/banners");
+export const createAdminBanner = (data: any) => api.post("/admin/banners", data);
+export const deleteAdminBanner = (id: string) => api.delete(`/admin/banners/${id}`);

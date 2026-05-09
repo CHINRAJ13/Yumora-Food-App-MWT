@@ -53,9 +53,11 @@ export default (err, req, res, next) => {
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, req, res);
-  } else if (process.env.NODE_ENV === 'production') {
+  } else {
     let error = { ...err };
     error.message = err.message;
+    error.name = err.name;
+    error.code = err.code;
 
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);

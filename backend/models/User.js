@@ -45,19 +45,17 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
 
   this.password = await bcrypt.hash(this.password, 12);
-  next();
 });
 
 // Update passwordChangedAt when password is changed
-userSchema.pre('save', function(next) {
-  if (!this.isModified('password') || this.isNew) return next();
+userSchema.pre('save', function() {
+  if (!this.isModified('password') || this.isNew) return;
 
   this.passwordChangedAt = Date.now() - 1000;
-  next();
 });
 
 // Instance method to check password

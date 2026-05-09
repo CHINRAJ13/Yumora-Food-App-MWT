@@ -9,8 +9,9 @@ const validate = (schema) => (req, res, next) => {
     });
     next();
   } catch (err) {
-    const message = err.errors.map((i) => i.message).join('. ');
-    return next(new AppError(message, 400));
+    const issues = err.issues || err.errors || [];
+    const message = issues.map((i) => i.message).join('. ');
+    return next(new AppError(message || 'Validation failed', 400));
   }
 };
 

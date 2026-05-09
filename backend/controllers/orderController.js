@@ -2,7 +2,7 @@ import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
 import * as orderService from '../services/orderService.js';
-import { emitOrderUpdate } from '../socket.js';
+import { emitOrderUpdate, emitNewOrder } from '../socket.js';
 
 /**
  * @desc    Create a new order
@@ -43,7 +43,10 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   // 3. Call Service
   const order = await orderService.createOrderService(orderData);
 
-  // 4. Success Response
+  // 4. Emit real-time notification to admin dashboard
+  emitNewOrder(order);
+
+  // 5. Success Response
   sendResponse(res, 201, 'Order placed successfully', order);
 });
 

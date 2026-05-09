@@ -2,7 +2,11 @@ import express from 'express';
 import { 
   getStats, 
   getAllOrders, 
-  updateOrder 
+  updateOrder,
+  getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
+  getAllUsers, updateUserRole,
+  getAllCategories, createCategory, deleteCategory,
+  getAllBanners, createBanner, deleteBanner
 } from '../controllers/adminController.js';
 import { protect, restrictTo } from '../middleware/auth.js';
 
@@ -12,8 +16,31 @@ const router = express.Router();
 router.use(protect);
 router.use(restrictTo('admin'));
 
+// Stats
 router.get('/stats', getStats);
+
+// Orders
 router.get('/orders', getAllOrders);
 router.patch('/orders/:id', updateOrder);
+
+// Restaurants
+router.get('/restaurants', getAllRestaurants);
+router.post('/restaurants', createRestaurant);
+router.put('/restaurants/:id', updateRestaurant);
+router.delete('/restaurants/:id', deleteRestaurant);
+
+// Users
+router.get('/users', getAllUsers);
+router.patch('/users/:id/role', updateUserRole);
+
+// Categories
+router.get('/categories', getAllCategories);
+router.post('/categories', createCategory);
+router.delete('/categories/:id', deleteCategory);
+
+// Banners
+router.get('/banners', getAllBanners);
+router.post('/banners', createBanner);
+router.delete('/banners/:id', deleteBanner);
 
 export default router;

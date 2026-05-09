@@ -1,3 +1,4 @@
+import React, { Suspense, lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -11,8 +12,7 @@ import Index from "./pages/Index";
 import Restaurants from "./pages/Restaurants";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import Cart from "./pages/Cart";
-// import Checkout from "./pages/Checkout";
-const Checkout = React.lazy(() => import("./pages/Checkout"));
+import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import Offers from "./pages/Offers";
 import Login from "./pages/Login";
@@ -23,7 +23,6 @@ import NotFound from "./pages/NotFound";
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthLoader from "./components/AuthLoader";
-import React, { Suspense } from "react";
 import { Loader } from "lucide-react";
 
 const queryClient = new QueryClient();

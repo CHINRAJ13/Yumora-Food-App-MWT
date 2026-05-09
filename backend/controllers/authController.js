@@ -10,7 +10,11 @@ import crypto from 'crypto';
  * @route   POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res, next) => {
-  const { name, email, password, phone } = req.body;
+  let { name, email, password, phone } = req.body;
+
+  if (!phone || phone.trim() === "") {
+    phone = undefined;
+  }
 
   const newUser = await User.create({
     name,
