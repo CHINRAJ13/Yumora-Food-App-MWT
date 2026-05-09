@@ -42,9 +42,9 @@ const CategoryChip = ({ category, isActive, onClick }: CategoryChipProps) => {
     <button
       onClick={onClick}
       className={`
-        relative flex flex-col items-center justify-center p-2 sm:p-5 rounded-2xl sm:rounded-[1.2rem]
+        relative flex flex-col items-center justify-center p-2 sm:p-4 rounded-2xl sm:rounded-[1.2rem]
         transition-all duration-300 outline-none group border snap-center
-        min-w-[96px] w-[96px] sm:w-full h-24 sm:h-36 shrink-0
+        min-w-[100px] w-24 sm:w-32 h-24 sm:h-32 shrink-0
         ${isActive 
           ? `bg-gray-900 border-gray-900 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.3)]` 
           : `bg-white/60 border-white/60 shadow-md sm:shadow-lg hover:shadow-xl hover:-translate-y-1 sm:hover:-translate-y-2 hover:${shadowGlow}`
@@ -66,7 +66,7 @@ const CategoryChip = ({ category, isActive, onClick }: CategoryChipProps) => {
 
       {/* Icon Wrapper */}
       <div className={`
-        flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 rounded-full mb-1.5 sm:mb-3
+        flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-1 sm:mb-2
         transition-all duration-500 shadow-inner bg-gradient-to-br ${gradient} bg-cover bg-center
         ${isActive ? "scale-105 shadow-md sm:shadow-lg" : "group-hover:scale-105 shadow-sm sm:shadow-md"}
       `}>

@@ -269,7 +269,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="flex overflow-x-auto gap-5 pb-8 scrollbar-hide snap-x">
+        <div className="flex overflow-x-auto gap-4 pb-8 scrollbar-hide snap-x">
           {loading && categories.length === 0 ? (
              Array.from({ length: 8 }).map((_, i) => (
                <Skeleton key={i} className="h-24 w-24 rounded-2xl shrink-0" />
