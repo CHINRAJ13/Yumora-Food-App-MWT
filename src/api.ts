@@ -95,3 +95,7 @@ export const getRestaurantStats = () => api.get("/restaurant-dash/stats");
 export const getRestaurantMenu = () => api.get("/restaurant-dash/menu");
 export const updateRestaurantMenu = (menu: any[]) => api.put("/restaurant-dash/menu", { menu });
 export const toggleRestaurantStatus = () => api.patch("/restaurant-dash/toggle-status");
+
+// User Profile Methods
+export const getUserProfile = () => api.get("/users/me");
+export const updateUserProfile = (data: { name?: string; email?: string; phone?: string }) => api.patch("/users/updateMe", data);

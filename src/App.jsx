@@ -20,6 +20,7 @@ import Tracking from "./pages/Tracking";
 import AdminDashboard from "./pages/AdminDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import RestaurantDashboard from "./pages/RestaurantDashboard";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 // Components
@@ -94,6 +95,14 @@ const App = () => (
                 element={
                   <ProtectedRoute roles={["restaurant"]}>
                     <RestaurantDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 } 
               />

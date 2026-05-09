@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Offers = () => {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchBanners = async () => {
     setLoading(true);

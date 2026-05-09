@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import RestaurantCard from "@/components/RestaurantCard";
 import CategoryChip from "@/components/CategoryChip";
 import Navbar from "@/components/Navbar";
@@ -11,20 +12,37 @@ import Footer from "@/components/Footer";
 type SortOption = "rating" | "deliveryTime" | "priceForTwo" | "distance";
 
 const Restaurants = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [vegOnly, setVegOnly] = useState(false);
-  const [nonVegOnly, setNonVegOnly] = useState(false);
+  
+  // Initialize state from URL params
+  const [activeCategory, setActiveCategory] = useState<string | null>(searchParams.get("category"));
+  const [vegOnly, setVegOnly] = useState(searchParams.get("isVeg") === "true");
+  const [nonVegOnly, setNonVegOnly] = useState(searchParams.get("isVeg") === "false");
   const [minRating, setMinRating] = useState(0);
-  const [sortBy, setSortBy] = useState<SortOption>("rating");
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortOption>((searchParams.get("sort") as SortOption) || "rating");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
+  
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 8;
+
+  // Sync state changes to URL
+  useEffect(() => {
+    const params: any = { page: currentPage.toString() };
+    if (search) params.search = search;
+    if (activeCategory) params.category = activeCategory;
+    if (vegOnly) params.isVeg = "true";
+    if (nonVegOnly) params.isVeg = "false";
+    if (sortBy !== "rating") params.sort = sortBy;
+    
+    setSearchParams(params, { replace: true });
+  }, [currentPage, search, activeCategory, vegOnly, nonVegOnly, sortBy, setSearchParams]);
 
   const loadData = useCallback(async () => {
     setLoading(true);

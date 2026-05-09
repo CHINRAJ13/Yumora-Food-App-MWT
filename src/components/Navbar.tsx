@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, MapPin, User, ClipboardList, Tag, Home, Menu, X, LogOut, Bike, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, MapPin, User as UserIcon, ClipboardList, Tag, Home, Menu, X, LogOut, Bike, LayoutDashboard } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +17,7 @@ const Navbar = () => {
     { to: "/", label: "Home", icon: Home },
     { to: "/orders", label: "Orders", icon: ClipboardList },
     { to: "/offers", label: "Offers", icon: Tag },
+    { to: "/profile", label: "Account", icon: UserIcon },
   ];
 
   // Add role-specific links
@@ -98,10 +99,10 @@ const Navbar = () => {
             
             {isAuthenticated ? (
               <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                  <User className="w-3.5 h-3.5 text-orange-500" />
+                <Link to="/profile" className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                  <UserIcon className="w-3.5 h-3.5 text-orange-500" />
                   <span className="text-xs font-bold text-gray-700">{user?.name}</span>
-                </div>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
@@ -115,7 +116,7 @@ const Navbar = () => {
                 to="/login"
                 className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 transition-all hover:bg-gray-50"
               >
-                <User className="w-4 h-4" />
+                <UserIcon className="w-4 h-4" />
                 <span>Login</span>
               </Link>
             )}
@@ -179,7 +180,7 @@ const Navbar = () => {
 
               <div className="p-4 flex-1 flex flex-col gap-2 overflow-y-auto">
                 <div className="mb-4 p-3 bg-orange-50 rounded-xl flex items-center gap-3">
-                  <User className="w-8 h-8 text-orange-600 bg-white p-1.5 rounded-full shadow-sm" />
+                  <UserIcon className="w-8 h-8 text-orange-600 bg-white p-1.5 rounded-full shadow-sm" />
                   <div>
                     <p className="font-bold text-gray-900">{isAuthenticated ? user?.name : "Guest User"}</p>
                     {isAuthenticated ? (

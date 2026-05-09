@@ -7,7 +7,7 @@ interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'user' | 'admin' | 'delivery';
+  role: 'user' | 'admin' | 'delivery' | 'restaurant';
 }
 
 interface AuthState {
@@ -18,6 +18,7 @@ interface AuthState {
   error: string | null;
   
   setAuth: (user: User, token: string) => void;
+  setUser: (user: User) => void;
   login: (credentials: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      setUser: (user) => set({ user }),
 
       login: async (credentials) => {
         set({ loading: true, error: null });

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, ArrowRight, ChevronLeft, ChevronRight, TrendingUp, Zap, Store, Utensils, Star, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as api from "@/api";
@@ -11,17 +11,28 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  
+  const [activeCategory, setActiveCategory] = useState<string | null>(searchParams.get("category"));
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
   const [nonVegOnly, setNonVegOnly] = useState(false);
-  const [searchParams] = useSearchParams();
+
+  // Sync state to URL
+  useEffect(() => {
+    const params: any = {};
+    if (activeCategory) params.category = activeCategory;
+    if (searchQuery) params.search = searchQuery;
+    setSearchParams(params, { replace: true });
+  }, [activeCategory, searchQuery, setSearchParams]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -46,11 +57,6 @@ const Index = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    const item = searchParams.get("item");
-    if (item) setSearchQuery(item);
-  }, [searchParams]);
 
   useEffect(() => {
     if (banners.length === 0) return;
@@ -136,7 +142,10 @@ const Index = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-3 pr-4 py-4 bg-transparent text-lg outline-none text-gray-900 placeholder:text-gray-400 font-bold"
                   />
-                  <button className="gradient-primary text-white px-8 py-4 rounded-xl text-base font-black shadow-lg active:scale-95 whitespace-nowrap uppercase tracking-widest">
+                  <button 
+                    onClick={() => navigate(`/restaurants?search=${encodeURIComponent(searchQuery)}`)}
+                    className="gradient-primary text-white px-8 py-4 rounded-xl text-base font-black shadow-lg active:scale-95 whitespace-nowrap uppercase tracking-widest"
+                  >
                     Search
                   </button>
                 </div>

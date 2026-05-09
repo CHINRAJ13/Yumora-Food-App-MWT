@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   Truck,
   LayoutDashboard,
-  User,
+  User as UserIcon,
   Mail,
   Phone,
 } from "lucide-react";
@@ -18,7 +18,7 @@ const roleBadge: Record<string, { bg: string; text: string; icon: any }> = {
   admin: { bg: "bg-red-50", text: "text-red-600", icon: ShieldCheck },
   restaurant: { bg: "bg-purple-50", text: "text-purple-600", icon: LayoutDashboard },
   delivery: { bg: "bg-blue-50", text: "text-blue-600", icon: Truck },
-  user: { bg: "bg-gray-50", text: "text-gray-600", icon: User },
+  user: { bg: "bg-gray-50", text: "text-gray-600", icon: UserIcon },
 };
 
 const AdminUsers = () => {
