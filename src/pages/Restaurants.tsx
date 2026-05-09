@@ -21,54 +21,67 @@ const Restaurants = () => {
   const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState<SortOption>("rating");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 8;
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Build params for backend filtering/pagination
+      const params: any = {
+        page: currentPage,
+        limit: itemsPerPage,
+        sort: sortBy === "rating" ? "-rating" : 
+              sortBy === "priceForTwo" ? "priceForTwo" :
+              sortBy === "deliveryTime" ? "deliveryTime" : "distance"
+      };
+
+      if (search) params.search = search;
+      if (activeCategory) params.category = activeCategory;
+      if (vegOnly) params.isVeg = "true";
+      if (nonVegOnly) params.isVeg = "false";
+      // minRating is currently handled on frontend or we could add to backend
+      
       const [restRes, catRes]: any = await Promise.all([
-        api.getRestaurants(),
+        api.getRestaurants(params),
         api.getCategories()
       ]);
       
-      if (restRes.status === 'success') setRestaurants(restRes.data);
+      if (restRes.status === 'success') {
+        setRestaurants(restRes.data);
+        if (restRes.meta) {
+          setTotalPages(restRes.meta.totalPages);
+          setTotalItems(restRes.meta.total);
+        }
+      }
       if (catRes.status === 'success') setCategories(catRes.data);
     } catch (err: any) {
       setError(err.message || "Failed to load restaurants. Please check your connection.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, sortBy, search, activeCategory, vegOnly, nonVegOnly]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const filtered = useMemo(() => {
-    let list = [...restaurants];
-    if (vegOnly) list = list.filter((r) => r.isVeg);
-    if (nonVegOnly) list = list.filter((r) => !r.isVeg);
-    if (minRating > 0) list = list.filter((r) => r.rating >= minRating);
-    if (activeCategory) {
-      list = list.filter((r) =>
-        r.cuisines?.some((c: string) => c.toLowerCase().includes(activeCategory.toLowerCase()))
-      );
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((r) => 
-        r.name.toLowerCase().includes(q) || 
-        r.cuisines?.some((c: string) => c.toLowerCase().includes(q))
-      );
-    }
-    list.sort((a, b) => {
-      if (sortBy === "rating") return b.rating - a.rating;
-      if (sortBy === "priceForTwo") return a.priceForTwo - b.priceForTwo;
-      if (sortBy === "distance") return parseFloat(a.distance || "0") - parseFloat(b.distance || "0");
-      return parseInt(a.deliveryTime || "0") - parseInt(b.deliveryTime || "0");
-    });
-    return list;
-  }, [restaurants, vegOnly, nonVegOnly, minRating, sortBy, search, activeCategory]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, activeCategory, vegOnly, nonVegOnly, sortBy]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
+  // Frontend still handles minRating for now as it's a simple secondary filter
+  const filteredRestaurants = useMemo(() => {
+    if (minRating === 0) return restaurants;
+    return restaurants.filter(r => r.rating >= minRating);
+  }, [restaurants, minRating]);
 
   return (
     <div className="min-h-screen bg-background pb-20 lg:pb-0">
@@ -79,7 +92,7 @@ const Restaurants = () => {
             <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Restos in Coimbatore</h1>
             <p className="text-muted-foreground text-sm flex items-center gap-1.5 font-medium">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              {filtered.length} locations currently delivering
+              {totalItems} locations currently delivering
             </p>
           </motion.div>
 
@@ -172,7 +185,7 @@ const Restaurants = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {loading && restaurants.length === 0 ? (
+          {loading ? (
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="space-y-3">
                 <Skeleton className="h-48 w-full rounded-2xl" />
@@ -191,12 +204,61 @@ const Restaurants = () => {
                 </button>
               </div>
             </div>
+          ) : filteredRestaurants.length === 0 ? (
+            <div className="col-span-full text-center py-20">
+               <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                 <Search className="w-10 h-10 text-gray-300" />
+               </div>
+               <h3 className="text-xl font-black text-gray-900">No restaurants found</h3>
+               <p className="text-gray-500">Try adjusting your filters or search query</p>
+            </div>
           ) : (
-            filtered.map((r, i) => (
+            filteredRestaurants.map((r, i) => (
               <RestaurantCard key={r._id || r.id} restaurant={r} index={i} />
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-12">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <ChevronDown className="w-5 h-5 rotate-90" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const pageNum = i + 1;
+                const isActive = currentPage === pageNum;
+                // Show at most 5 page buttons for better UI if many pages
+                if (totalPages > 5 && (pageNum < currentPage - 2 || pageNum > currentPage + 2)) return null;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`min-w-[44px] h-11 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                      isActive
+                        ? "gradient-primary text-white shadow-md scale-105"
+                        : "bg-white border border-gray-100 text-gray-500 hover:border-primary/30 hover:text-primary"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <ChevronDown className="w-5 h-5 -rotate-90" />
+            </button>
+          </div>
+        )}
       </div>
       <Footer />
     </div>
