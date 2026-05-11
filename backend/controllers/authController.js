@@ -3,6 +3,7 @@ import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { createSendToken } from '../utils/jwt.js';
 import { sendSMS } from '../utils/sms.js';
+import { sendEmail } from '../utils/email.js';
 import crypto from 'crypto';
 
 /**
@@ -117,5 +118,89 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
   user.otpExpires = undefined;
   await user.save({ validateBeforeSave: false });
 
+  createSendToken(user, 200, res);
+});
+
+/**
+ * @desc    Forgot Password
+ * @route   POST /api/auth/forgot-password
+ */
+export const forgotPassword = asyncHandler(async (req, res, next) => {
+  const { email, phone } = req.body;
+
+  if (!email && !phone) {
+    return next(new AppError('Please provide email or phone number', 400));
+  }
+
+  // 1) Find user by email OR phone
+  const user = await User.findOne({ 
+    $or: [
+      { email: email || 'never_match_placeholder' }, 
+      { phone: phone || 'never_match_placeholder' }
+    ] 
+  });
+
+  if (!user) {
+    return next(new AppError('No user found with that email or phone number', 404));
+  }
+
+  // 2) Generate reset token
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  // 3) Send it via Email and SMS
+  // Construct reset URL (use process.env.FRONTEND_URL in production)
+  const resetURL = `${req.protocol}://${req.get('host').replace('5000', '8080')}/reset-password/${resetToken}`;
+  
+  const message = `Forgot your password? Submit a PATCH request with your new password to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
+
+  try {
+    if (user.email && (email || !phone)) {
+      await sendEmail(user.email, 'Your password reset token (valid for 10 min)', message);
+    }
+    
+    if (user.phone && (phone || !email)) {
+      await sendSMS(user.phone, `Your password reset link: ${resetURL}`);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Token sent to email/phone!'
+    });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(new AppError('There was an error sending the message. Try again later!', 500));
+  }
+});
+
+/**
+ * @desc    Reset Password
+ * @route   PATCH /api/auth/reset-password/:token
+ */
+export const resetPassword = asyncHandler(async (req, res, next) => {
+  // 1) Get user based on the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() }
+  });
+
+  // 2) If token has not expired, and there is user, set the new password
+  if (!user) {
+    return next(new AppError('Token is invalid or has expired', 400));
+  }
+  user.password = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // 3) Log the user in, send JWT
   createSendToken(user, 200, res);
 });

@@ -4,7 +4,9 @@ import {
   login, 
   logout, 
   sendOTP, 
-  verifyOTP 
+  verifyOTP,
+  forgotPassword,
+  resetPassword
 } from '../controllers/authController.js';
 
 import validate from '../middleware/validate.js';
@@ -12,7 +14,9 @@ import {
   registerSchema, 
   loginSchema, 
   otpSchema, 
-  verifyOtpSchema 
+  verifyOtpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema
 } from '../validators/authValidator.js';
 
 const router = express.Router();
@@ -22,5 +26,7 @@ router.post('/login', validate(loginSchema), login);
 router.get('/logout', logout);
 router.post('/send-otp', validate(otpSchema), sendOTP);
 router.post('/verify-otp', validate(verifyOtpSchema), verifyOTP);
+router.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword);
+router.patch('/reset-password/:token', validate(resetPasswordSchema), resetPassword);
 
 export default router;

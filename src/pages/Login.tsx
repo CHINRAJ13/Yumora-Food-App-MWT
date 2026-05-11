@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import * as api from "@/api";
 import { Button } from "@/components/ui/button";
@@ -223,6 +223,14 @@ const Login = () => {
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <Link 
+                        to="/forgot-password" 
+                        className="text-xs font-bold text-primary hover:underline transition-all"
+                      >
+                        Forgot Password?
+                      </Link>
                     </div>
                   </div>
                   <Button type="submit" className="w-full h-12 rounded-xl gradient-primary font-bold shadow-lg" disabled={loading}>
