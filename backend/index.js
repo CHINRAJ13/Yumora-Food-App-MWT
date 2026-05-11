@@ -42,6 +42,9 @@ connectDB();
 
 const app = express();
 
+// Required for express-rate-limit to work on Render/Heroku
+app.set('trust proxy', 1);
+
 // 1. GLOBAL MIDDLEWARES
 
 // Security Headers
