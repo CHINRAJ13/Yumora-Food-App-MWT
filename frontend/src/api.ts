@@ -101,6 +101,9 @@ export const toggleRestaurantStatus = () => api.patch("/restaurant-dash/toggle-s
 export const uploadMenuImage = (formData: FormData) => api.post("/restaurant-dash/menu/upload", formData, {
   headers: { 'Content-Type': 'multipart/form-data' }
 });
+export const updateRestaurantProfile = (formData: FormData) => api.patch("/restaurant-dash/profile", formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 // User Profile Methods
 export const getUserProfile = () => api.get("/users/me");

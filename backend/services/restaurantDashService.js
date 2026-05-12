@@ -169,3 +169,16 @@ export const toggleRestaurantStatus = async (restaurantId) => {
   await restaurant.save();
   return restaurant;
 };
+
+/**
+ * Update restaurant profile data
+ */
+export const updateRestaurantProfile = async (restaurantId, updateData) => {
+  const restaurant = await Restaurant.findOneAndUpdate(
+    { id: restaurantId },
+    { $set: updateData },
+    { returnDocument: 'after', runValidators: true }
+  );
+  if (!restaurant) throw new Error('Restaurant not found');
+  return restaurant;
+};

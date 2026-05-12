@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Clock, UtensilsCrossed, BarChart3, RefreshCw } from "lucide-react";
+import { ShoppingBag, Clock, UtensilsCrossed, BarChart3, RefreshCw, Settings } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import RestaurantStats from "@/components/restaurant/RestaurantStats";
 import RestaurantOrderCard from "@/components/restaurant/RestaurantOrderCard";
 import RestaurantMenuEditor from "@/components/restaurant/RestaurantMenuEditor";
 import RestaurantRevenueChart from "@/components/restaurant/RestaurantRevenueChart";
+import RestaurantProfileEditor from "@/components/restaurant/RestaurantProfileEditor";
 import * as api from "@/api";
 import { socketService } from "@/services/socket";
 import { useAuthStore } from "@/store/useAuthStore";
 
-type Tab = "orders" | "history" | "menu" | "revenue";
+type Tab = "orders" | "history" | "menu" | "revenue" | "settings";
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: "orders", label: "Live Orders", icon: ShoppingBag },
   { id: "history", label: "History", icon: Clock },
   { id: "menu", label: "Menu", icon: UtensilsCrossed },
   { id: "revenue", label: "Revenue", icon: BarChart3 },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const RestaurantDashboard = () => {
@@ -180,7 +182,8 @@ const RestaurantDashboard = () => {
                     tab.id === "orders" ? "bg-gradient-to-r from-orange-500 to-amber-500" :
                     tab.id === "history" ? "bg-gradient-to-r from-blue-500 to-indigo-500" :
                     tab.id === "menu" ? "bg-gradient-to-r from-violet-500 to-purple-500" :
-                    "bg-gradient-to-r from-emerald-500 to-green-500"
+                    tab.id === "revenue" ? "bg-gradient-to-r from-emerald-500 to-green-500" :
+                    "bg-gradient-to-r from-gray-700 to-gray-900"
                   } shadow-lg`} transition={{ type: "spring", duration: 0.4 }} />
                 )}
                 <Icon className="w-4 h-4 relative z-10" />
@@ -232,6 +235,10 @@ const RestaurantDashboard = () => {
 
             {activeTab === "revenue" && (
               <RestaurantRevenueChart dailyRevenue={stats?.dailyRevenue || []} topItems={stats?.topItems || []} stats={stats} />
+            )}
+
+            {activeTab === "settings" && restaurant && (
+              <RestaurantProfileEditor restaurant={restaurant} onUpdate={(updated) => setRestaurant(updated)} />
             )}
           </motion.div>
         </AnimatePresence>

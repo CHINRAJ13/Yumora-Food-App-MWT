@@ -154,6 +154,23 @@ export const deleteRestaurant = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'Restaurant deleted', null);
 });
 
+export const verifyRestaurant = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { isVerified } = req.body;
+
+  const restaurant = await Restaurant.findOneAndUpdate(
+    { id },
+    { isVerified },
+    { returnDocument: 'after' }
+  );
+
+  if (!restaurant) {
+    return next(new AppError('Restaurant not found', 404));
+  }
+
+  sendResponse(res, 200, `Restaurant ${isVerified ? 'verified' : 'unverified'} successfully`, restaurant);
+});
+
 // --- Users ---
 export const getAllUsers = asyncHandler(async (req, res, next) => {
   const users = await User.find();

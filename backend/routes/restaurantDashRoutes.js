@@ -7,7 +7,8 @@ import {
   getStats,
   getMenu,
   updateMenu,
-  toggleStatus
+  toggleStatus,
+  updateProfile
 } from '../controllers/restaurantDashController.js';
 import { protect, restrictTo } from '../middleware/auth.js';
 import { uploadFood } from '../middleware/upload.js';
@@ -18,6 +19,7 @@ const router = express.Router();
 router.use(protect, restrictTo('restaurant'));
 
 router.get('/profile', getProfile);
+router.patch('/profile', uploadFood.single('image'), updateProfile);
 router.get('/orders', getOrders);
 router.get('/orders/active', getActive);
 router.patch('/orders/:id/status', updateStatus);

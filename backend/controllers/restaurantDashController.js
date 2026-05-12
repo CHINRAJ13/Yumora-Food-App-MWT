@@ -8,7 +8,8 @@ import {
   updateOrderByRestaurant,
   getRestaurantStats,
   updateRestaurantMenu,
-  toggleRestaurantStatus
+  toggleRestaurantStatus,
+  updateRestaurantProfile
 } from '../services/restaurantDashService.js';
 import { emitOrderUpdate, emitNewAvailableOrder } from '../socket.js';
 
@@ -120,4 +121,35 @@ export const toggleStatus = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, `Restaurant is now ${updated.acceptsOrders ? 'Online' : 'Offline'}`, {
     acceptsOrders: updated.acceptsOrders
   });
+});
+
+/**
+ * @desc    Update restaurant profile info & banner
+ * @route   PATCH /api/restaurant-dash/profile
+ * @access  Restaurant
+ */
+export const updateProfile = asyncHandler(async (req, res, next) => {
+  const restaurant = await getMyRestaurant(req.user._id);
+  
+  const allowedFields = ['name', 'cuisines', 'deliveryTime', 'priceForTwo', 'distance', 'isVeg'];
+  const updateData = {};
+  
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      if (field === 'cuisines' && typeof req.body[field] === 'string') {
+        updateData[field] = req.body[field].split(',').map(c => c.trim());
+      } else {
+        updateData[field] = req.body[field];
+      }
+    }
+  });
+
+  // Handle banner image update
+  if (req.file) {
+    updateData.image = req.file.path;
+  }
+
+  const updatedRestaurant = await updateRestaurantProfile(restaurant.id, updateData);
+  
+  sendResponse(res, 200, 'Profile updated successfully', updatedRestaurant);
 });

@@ -92,17 +92,24 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
                 <input value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="Name *" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
                 <input type="number" value={newItem.price || ""} onChange={(e) => setNewItem({ ...newItem, price: Number(e.target.value) })} placeholder="Price *" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
                 <input value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} placeholder="Category" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
-                <div className="relative group">
-                  <input 
-                    type="file" 
-                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "new")} 
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                  />
-                  <div className="px-3 py-2 bg-gray-50 rounded-xl text-sm border border-transparent group-hover:border-emerald-200 flex items-center justify-between transition-all">
-                    <span className="text-gray-400 truncate max-w-[120px]">{newItem.image ? "Image Selected" : "Upload Image"}</span>
-                    {uploadingImage === "new" ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Camera className="w-4 h-4 text-gray-400" />}
+                <div className="flex items-center gap-2">
+                  <div className="relative group flex-1">
+                    <input 
+                      type="file" 
+                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "new")} 
+                      accept="image/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                    />
+                    <div className="px-3 py-2 bg-gray-50 rounded-xl text-sm border border-transparent group-hover:border-emerald-200 flex items-center justify-between transition-all">
+                      <span className="text-gray-400 truncate max-w-[100px]">{newItem.image ? "Change Image" : "Upload Image"}</span>
+                      {uploadingImage === "new" ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Camera className="w-4 h-4 text-gray-400" />}
+                    </div>
                   </div>
+                  {newItem.image && (
+                    <div className="w-9 h-9 rounded-lg border-2 border-emerald-100 overflow-hidden bg-white shrink-0 shadow-sm">
+                      <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -128,7 +135,26 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
                 <div className={`w-3 h-3 rounded-sm border-2 ${item.isVeg ? "border-green-500" : "border-red-500"}`}>
                   <div className={`w-1.5 h-1.5 rounded-full m-[1px] ${item.isVeg ? "bg-green-500" : "bg-red-500"}`} />
                 </div>
-                {item.image && <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />}
+                <div className="relative group/img flex-shrink-0">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover transition-all group-hover/img:brightness-75" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                  )}
+                  {editingId === item.id && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      <Camera className="w-4 h-4 text-white" />
+                      <input 
+                        type="file" 
+                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], item.id)} 
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   {editingId === item.id ? (
                     <input value={item.name} onChange={(e) => handleUpdateItem(item.id, "name", e.target.value)} className="text-sm font-bold bg-blue-50 px-2 py-1 rounded-lg outline-none w-full" />

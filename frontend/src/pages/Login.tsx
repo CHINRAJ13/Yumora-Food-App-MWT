@@ -335,14 +335,27 @@ const Login = () => {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Hotel Card / Business Proof</Label>
-                          <Input 
-                            type="file" 
-                            onChange={(e) => setRestaurantImage(e.target.files?.[0] || null)} 
-                            accept="image/*"
-                            required 
-                            className="h-10 bg-orange-50/50 border-orange-200 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" 
-                          />
-                          <p className="text-[9px] text-gray-500 italic ml-1">* Required for verification</p>
+                          <div className="flex gap-4 items-start">
+                            <div className="flex-1">
+                              <Input 
+                                type="file" 
+                                onChange={(e) => setRestaurantImage(e.target.files?.[0] || null)} 
+                                accept="image/*"
+                                required 
+                                className="h-10 bg-orange-50/50 border-orange-200 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" 
+                              />
+                              <p className="text-[9px] text-gray-500 italic ml-1 mt-1">* Required for verification</p>
+                            </div>
+                            {restaurantImage && (
+                              <div className="w-16 h-16 rounded-xl border-2 border-orange-200 overflow-hidden bg-white shrink-0 shadow-sm">
+                                <img 
+                                  src={URL.createObjectURL(restaurantImage)} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </motion.div>
                     )}

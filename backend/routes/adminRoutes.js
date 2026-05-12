@@ -5,7 +5,7 @@ import {
   updateOrder,
   assignDeliveryPerson,
   getDeliveryPersons,
-  getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
+  getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant, verifyRestaurant,
   getAllUsers, updateUserRole, updateUserStatus,
   getAllCategories, createCategory, deleteCategory,
   getAllBanners, createBanner, deleteBanner
@@ -35,6 +35,7 @@ router.get('/restaurants', getAllRestaurants);
 router.post('/restaurants', uploadRestaurant.single('image'), createRestaurant);
 router.put('/restaurants/:id', uploadRestaurant.single('image'), updateRestaurant);
 router.delete('/restaurants/:id', deleteRestaurant);
+router.patch('/restaurants/:id/verify', verifyRestaurant);
 
 // Users
 router.get('/users', getAllUsers);
