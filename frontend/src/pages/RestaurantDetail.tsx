@@ -214,7 +214,7 @@ const RestaurantDetail = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
               >
-                <MenuItemCard item={item} restaurantId={restaurant._id} restaurantName={restaurant.name} />
+                <MenuItemCard item={item} restaurantId={restaurant.id} restaurantName={restaurant.name} />
               </motion.div>
             ))}
           </AnimatePresence>
