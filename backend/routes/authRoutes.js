@@ -18,10 +18,11 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema
 } from '../validators/authValidator.js';
+import { uploadRestaurant } from '../middleware/upload.js';
 
 const router = express.Router();
 
-router.post('/register', validate(registerSchema), register);
+router.post('/register', uploadRestaurant.single('image'), validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
 router.get('/logout', logout);
 router.post('/send-otp', validate(otpSchema), sendOTP);

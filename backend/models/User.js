@@ -24,9 +24,23 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'delivery', 'restaurant'],
     default: 'user'
   },
+  status: {
+    type: String,
+    enum: ['pending', 'active', 'suspended'],
+    default: 'active'
+  },
   restaurantId: {
     type: String,
     default: null // Links restaurant-role user to their restaurant
+  },
+  deliveryDetails: {
+    vehicleNumber: String,
+    licenseNumber: String,
+    vehicleType: {
+      type: String,
+      enum: ['Bike', 'Scooter', 'Cycle'],
+      default: 'Bike'
+    }
   },
   password: {
     type: String,

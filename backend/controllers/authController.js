@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Restaurant from '../models/Restaurant.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { createSendToken } from '../utils/jwt.js';
@@ -11,18 +12,76 @@ import crypto from 'crypto';
  * @route   POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res, next) => {
-  let { name, email, password, phone } = req.body;
+  let { 
+    name, email, password, phone, role, 
+    restaurantName, cuisines, 
+    vehicleNumber, licenseNumber, vehicleType 
+  } = req.body;
 
   if (!phone || phone.trim() === "") {
     phone = undefined;
   }
 
+  // Sanitize role: Only allow public roles, default to 'user'
+  const allowedPublicRoles = ['user', 'delivery', 'restaurant'];
+  const finalRole = (role && allowedPublicRoles.includes(role)) ? role : 'user';
+
+  // Set initial status: Restaurants and Delivery need approval
+  const initialStatus = (finalRole === 'restaurant' || finalRole === 'delivery') ? 'pending' : 'active';
+
+  // Prep role-specific details
+  const deliveryDetails = finalRole === 'delivery' ? {
+    vehicleNumber,
+    licenseNumber,
+    vehicleType: vehicleType || 'Bike'
+  } : undefined;
+
   const newUser = await User.create({
     name,
     email,
     password,
-    phone
+    phone,
+    role: finalRole,
+    status: initialStatus,
+    deliveryDetails
   });
+
+  // If Restaurant owner, create the restaurant profile
+  if (finalRole === 'restaurant') {
+    const restaurantId = `rest_${Date.now()}`;
+    await Restaurant.create({
+      id: restaurantId,
+      name: restaurantName || `${name}'s Restaurant`,
+      ownerId: newUser._id,
+      cuisines: cuisines ? cuisines.split(',').map(c => c.trim()) : ['Multicuisine'],
+      image: req.file ? req.file.path : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000",
+      deliveryTime: "30-40 min",
+      isVeg: false,
+      rating: 0,
+      isActive: false // Hidden until admin approval
+    });
+    
+    newUser.restaurantId = restaurantId;
+    await newUser.save({ validateBeforeSave: false });
+  }
+
+  if (newUser.status === 'pending') {
+    return res.status(201).json({
+      status: 'success',
+      message: 'Registration successful! Your account is pending admin approval. Please wait for verification.',
+      data: {
+        user: {
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          status: newUser.status,
+          restaurantId: newUser.restaurantId,
+          deliveryDetails: newUser.deliveryDetails
+        }
+      }
+    });
+  }
 
   createSendToken(newUser, 201, res);
 });
@@ -46,7 +105,16 @@ export const login = asyncHandler(async (req, res, next) => {
     return next(new AppError('Incorrect email or password', 401));
   }
 
-  // 3) If everything ok, send token to client
+  // 3) Check if account is active
+  if (user.status === 'pending') {
+    return next(new AppError('Your account is pending approval by an admin.', 403));
+  }
+  
+  if (user.status === 'suspended') {
+    return next(new AppError('Your account has been suspended. Please contact support.', 403));
+  }
+
+  // 4) If everything ok, send token to client
   createSendToken(user, 200, res);
 });
 

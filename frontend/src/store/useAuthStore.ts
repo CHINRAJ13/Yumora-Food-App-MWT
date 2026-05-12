@@ -57,12 +57,19 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true, error: null });
         try {
           const response: any = await api.registerUser(data);
-          set({ 
-            user: response.data.user, 
-            token: response.token, 
-            isAuthenticated: true, 
-            loading: false 
-          });
+          
+          // Only set authenticated if token is provided (not for pending accounts)
+          if (response.token) {
+            set({ 
+              user: response.data.user, 
+              token: response.token, 
+              isAuthenticated: true, 
+              loading: false 
+            });
+          } else {
+            set({ loading: false });
+          }
+          return response; // Return full response to handle messages in UI
         } catch (error: any) {
           set({ error: error.message, loading: false });
           throw error;

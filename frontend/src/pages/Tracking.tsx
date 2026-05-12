@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import * as api from "@/api";
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
-import { ChefHat, Truck, CheckCircle2, Package, ArrowLeft, Timer, MapPin, RefreshCw, Bike, User } from "lucide-react";
+import { ChefHat, Truck, CheckCircle2, Package, ArrowLeft, Timer, MapPin, RefreshCw, Bike, User, Navigation } from "lucide-react";
 import { socketService } from "@/services/socket";
 import { toast } from "sonner";
 
@@ -204,10 +204,22 @@ const EnhancedTrackingCard = ({ order }: { order: any }) => {
           <div className="bg-white p-2 rounded-xl shadow-sm">
             <MapPin className="w-4 h-4 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Delivery Address</p>
             <p className="text-xs font-bold text-gray-700 mt-0.5 line-clamp-1">{order.address}</p>
           </div>
+          {order.location?.lat && (
+            <button 
+              onClick={() => {
+                const url = `https://www.google.com/maps/search/?api=1&query=${order.location.lat},${order.location.lng}`;
+                window.open(url, "_blank");
+              }}
+              className="bg-primary/5 p-2 rounded-xl text-primary hover:bg-primary/10 transition-all"
+              title="View on Map"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

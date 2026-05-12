@@ -5,7 +5,6 @@ import {
   Mail, 
   Phone, 
   ChevronRight, 
-  Camera, 
   ShieldCheck, 
   Package, 
   LogOut,
@@ -111,9 +110,6 @@ const Profile = () => {
                   <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-black shadow-lg">
                     {user?.name?.charAt(0)?.toUpperCase()}
                   </div>
-                  <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-lg hover:bg-gray-50 transition-all">
-                    <Camera className="w-4 h-4 text-gray-600" />
-                  </button>
                 </div>
                 <h2 className="text-xl font-black text-gray-900 mb-1">{user?.name}</h2>
                 <p className="text-sm text-gray-400 font-medium">{user?.role?.toUpperCase()} • Coimbatore</p>

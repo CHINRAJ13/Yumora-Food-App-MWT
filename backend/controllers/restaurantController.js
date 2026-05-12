@@ -14,8 +14,8 @@ export const getAllRestaurants = asyncHandler(async (req, res, next) => {
   const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
   excludedFields.forEach(el => delete queryObj[el]);
 
-  // 2) Search
-  let filter = {};
+  // Public listing should only show active/approved restaurants
+  let filter = { isActive: true };
   if (req.query.search) {
     filter = {
       $or: [

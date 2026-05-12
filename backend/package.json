@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
@@ -23,6 +24,8 @@
     "mongo-sanitize": "^1.1.0",
     "mongoose": "^9.4.1",
     "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^8.0.5",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.3",

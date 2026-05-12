@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Save, X, Pencil, Search } from "lucide-react";
+import { Plus, Trash2, Save, X, Pencil, Search, Camera, Loader2 } from "lucide-react";
+import * as api from "@/api";
 import { toast } from "sonner";
 
 interface MenuEditorProps {
@@ -15,6 +16,28 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ id: "", name: "", description: "", price: 0, image: "", category: "", isVeg: true, isBestseller: false });
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+
+  const handleImageUpload = async (file: File, itemId: string | "new") => {
+    const formData = new FormData();
+    formData.append("foodImage", file);
+    setUploadingImage(itemId);
+    try {
+      const res: any = await api.uploadMenuImage(formData);
+      if (res.status === "success") {
+        if (itemId === "new") {
+          setNewItem({ ...newItem, image: res.data.url });
+        } else {
+          handleUpdateItem(itemId, "image", res.data.url);
+        }
+        toast.success("Image uploaded!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploadingImage(null);
+    }
+  };
 
   const hasChanges = JSON.stringify(items) !== JSON.stringify(menu);
 
@@ -69,7 +92,18 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
                 <input value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="Name *" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
                 <input type="number" value={newItem.price || ""} onChange={(e) => setNewItem({ ...newItem, price: Number(e.target.value) })} placeholder="Price *" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
                 <input value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} placeholder="Category" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
-                <input value={newItem.image} onChange={(e) => setNewItem({ ...newItem, image: e.target.value })} placeholder="Image URL" className="px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 font-medium" />
+                <div className="relative group">
+                  <input 
+                    type="file" 
+                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "new")} 
+                    accept="image/*"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  />
+                  <div className="px-3 py-2 bg-gray-50 rounded-xl text-sm border border-transparent group-hover:border-emerald-200 flex items-center justify-between transition-all">
+                    <span className="text-gray-400 truncate max-w-[120px]">{newItem.image ? "Image Selected" : "Upload Image"}</span>
+                    {uploadingImage === "new" ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Camera className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 <input value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Description" className="flex-1 px-3 py-2 bg-gray-50 rounded-xl text-sm outline-none font-medium" />
@@ -107,6 +141,20 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
                   <input type="number" value={item.price} onChange={(e) => handleUpdateItem(item.id, "price", Number(e.target.value))} className="w-20 text-sm font-black bg-blue-50 px-2 py-1 rounded-lg outline-none text-right" />
                 ) : (
                   <span className="text-sm font-black text-gray-900">₹{item.price}</span>
+                )}
+                
+                {editingId === item.id && (
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], item.id)} 
+                      accept="image/*"
+                      className="absolute inset-0 w-8 h-8 opacity-0 cursor-pointer z-10" 
+                    />
+                    <div className="p-2 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
+                      {uploadingImage === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                    </div>
+                  </div>
                 )}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => setEditingId(editingId === item.id ? null : item.id)} className={`p-2 rounded-lg ${editingId === item.id ? "bg-blue-100 text-blue-600" : "hover:bg-gray-100 text-gray-400"}`}>

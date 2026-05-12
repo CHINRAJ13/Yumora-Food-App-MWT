@@ -10,6 +10,7 @@ import {
   toggleStatus
 } from '../controllers/restaurantDashController.js';
 import { protect, restrictTo } from '../middleware/auth.js';
+import { uploadFood } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -23,6 +24,15 @@ router.patch('/orders/:id/status', updateStatus);
 router.get('/stats', getStats);
 router.get('/menu', getMenu);
 router.put('/menu', updateMenu);
+router.post('/menu/upload', uploadFood.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ status: 'fail', message: 'No file uploaded' });
+  }
+  res.status(200).json({
+    status: 'success',
+    data: { url: req.file.path }
+  });
+});
 router.patch('/toggle-status', toggleStatus);
 
 export default router;

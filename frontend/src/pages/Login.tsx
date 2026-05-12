@@ -28,6 +28,15 @@ const Login = () => {
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState("user");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Role-specific fields
+  const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantImage, setRestaurantImage] = useState<File | null>(null);
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [vehicleType, setVehicleType] = useState("Bike");
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -68,9 +77,41 @@ const Login = () => {
     }
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
     try {
-      await register({ name: fullName, email, password, phone: phoneNumber });
-      toast({ title: "Signup successful", description: "Welcome to Yumora!" });
+      const signupData: any = { 
+        name: fullName, 
+        email, 
+        password, 
+        phone: phoneNumber, 
+        role,
+        restaurantName: role === 'restaurant' ? restaurantName : undefined,
+        vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
+        licenseNumber: role === 'delivery' ? licenseNumber : undefined,
+        vehicleType: role === 'delivery' ? vehicleType : undefined
+      };
+
+      let finalData;
+      if (role === 'restaurant' && restaurantImage) {
+        const formData = new FormData();
+        Object.keys(signupData).forEach(key => {
+          if (signupData[key] !== undefined) {
+            formData.append(key, signupData[key]);
+          }
+        });
+        formData.append('image', restaurantImage);
+        finalData = formData;
+      } else {
+        finalData = signupData;
+      }
+
+      const res: any = await register(finalData);
+      if (res.status === 'success' && !res.token) {
+        setSuccessMessage(res.message);
+        toast({ title: "Registration Received", description: res.message });
+      } else {
+        toast({ title: "Signup successful", description: "Welcome to Yumora!" });
+      }
     } catch (err: any) {
       setError(err.message);
       toast({ title: "Signup failed", description: err.message, variant: "destructive" });
@@ -240,27 +281,116 @@ const Login = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4 mt-6">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
-                    <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Email</Label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="h-10 bg-white/50 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Password</Label>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 6 characters" required className="h-10 bg-white/50 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Confirm Password</Label>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat password" required className="h-10 bg-white/50 rounded-xl" />
-                  </div>
-                  <Button type="submit" className="w-full h-11 rounded-xl gradient-primary font-bold shadow-md" disabled={loading}>
-                    Create Premium Account
-                  </Button>
-                </form>
+                {successMessage ? (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6 text-center py-8"
+                  >
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">⏳</span>
+                    </div>
+                    <h3 className="text-xl font-black text-gray-900">Application Received</h3>
+                    <p className="text-gray-600 font-medium px-4">{successMessage}</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSuccessMessage(null)}
+                      className="mt-6 rounded-xl font-bold"
+                    >
+                      Back to Registration
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
+                        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Join As</Label>
+                        <select 
+                          value={role} 
+                          onChange={(e) => setRole(e.target.value)}
+                          className="w-full h-10 px-3 bg-white/50 border border-input rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
+                        >
+                          <option value="user">Customer</option>
+                          <option value="restaurant">Restaurant Owner</option>
+                          <option value="delivery">Delivery Rider</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {role === 'restaurant' && (
+                      <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Restaurant Name</Label>
+                          <Input 
+                            value={restaurantName} 
+                            onChange={(e) => setRestaurantName(e.target.value)} 
+                            placeholder="e.g. Royal Cafe" 
+                            required 
+                            className="h-10 bg-orange-50/50 border-orange-200 rounded-xl" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Hotel Card / Business Proof</Label>
+                          <Input 
+                            type="file" 
+                            onChange={(e) => setRestaurantImage(e.target.files?.[0] || null)} 
+                            accept="image/*"
+                            required 
+                            className="h-10 bg-orange-50/50 border-orange-200 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" 
+                          />
+                          <p className="text-[9px] text-gray-500 italic ml-1">* Required for verification</p>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {role === 'delivery' && (
+                      <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Vehicle Number</Label>
+                          <Input 
+                            value={vehicleNumber} 
+                            onChange={(e) => setVehicleNumber(e.target.value)} 
+                            placeholder="TN 37 AB 1234" 
+                            required 
+                            className="h-10 bg-blue-50/50 border-blue-200 rounded-xl text-xs" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">License No.</Label>
+                          <Input 
+                            value={licenseNumber} 
+                            onChange={(e) => setLicenseNumber(e.target.value)} 
+                            placeholder="DL-12345678" 
+                            required 
+                            className="h-10 bg-blue-50/50 border-blue-200 rounded-xl text-xs" 
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Email</Label>
+                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="h-10 bg-white/50 rounded-xl" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Password</Label>
+                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 6 characters" required className="h-10 bg-white/50 rounded-xl" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Confirm</Label>
+                        <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat password" required className="h-10 bg-white/50 rounded-xl" />
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full h-11 rounded-xl gradient-primary font-bold shadow-md" disabled={loading}>
+                      {loading ? "Creating..." : role === 'user' ? "Create Account" : "Apply for Account"}
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>

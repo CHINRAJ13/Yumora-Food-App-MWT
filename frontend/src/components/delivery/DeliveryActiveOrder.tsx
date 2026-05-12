@@ -105,10 +105,24 @@ const DeliveryActiveOrder = ({ order, onPickup, onComplete, isProcessing }: Deli
               <MapPin className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Customer Address</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Customer Address</p>
+                {order.location?.lat && (
+                  <span className="bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">GPS Fixed</span>
+                )}
+              </div>
               <p className="text-xs font-bold text-gray-700 mt-0.5">{order.address || "N/A"}</p>
             </div>
-            <button className="bg-blue-50 p-2.5 rounded-xl hover:bg-blue-100 transition-colors">
+            <button 
+              onClick={() => {
+                const url = order.location?.lat 
+                  ? `https://www.google.com/maps/search/?api=1&query=${order.location.lat},${order.location.lng}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`;
+                window.open(url, "_blank");
+              }}
+              className="bg-blue-50 p-2.5 rounded-xl hover:bg-blue-100 transition-colors shadow-sm active:scale-90"
+              title="Navigate to Customer"
+            >
               <Navigation className="w-4 h-4 text-blue-500" />
             </button>
           </div>

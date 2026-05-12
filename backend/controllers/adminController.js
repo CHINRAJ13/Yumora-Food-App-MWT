@@ -127,11 +127,22 @@ export const createRestaurant = asyncHandler(async (req, res, next) => {
   if (!req.body.id) {
     req.body.id = Date.now().toString();
   }
+  
+  // If a file was uploaded via Cloudinary, use its path
+  if (req.file) {
+    req.body.image = req.file.path;
+  }
+
   const restaurant = await Restaurant.create(req.body);
   sendResponse(res, 201, 'Restaurant created', restaurant);
 });
 
 export const updateRestaurant = asyncHandler(async (req, res, next) => {
+  // If a file was uploaded via Cloudinary, use its path
+  if (req.file) {
+    req.body.image = req.file.path;
+  }
+
   const restaurant = await Restaurant.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
   if (!restaurant) return next(new AppError('Restaurant not found', 404));
   sendResponse(res, 200, 'Restaurant updated', restaurant);
@@ -159,6 +170,39 @@ export const updateUserRole = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'User updated successfully', user);
 });
 
+/**
+ * @desc    Update user status (approve/suspend)
+ * @route   PATCH /api/admin/users/:id/status
+ * @access  Admin
+ */
+export const updateUserStatus = asyncHandler(async (req, res, next) => {
+  const { status } = req.body;
+
+  if (!status || !['pending', 'active', 'suspended'].includes(status)) {
+    return next(new AppError('Please provide a valid status', 400));
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.params.id, 
+    { status }, 
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    return next(new AppError('User not found', 404));
+  }
+
+  // If approving a restaurant owner, also activate the restaurant profile
+  if (user.role === 'restaurant' && status === 'active' && user.restaurantId) {
+    await Restaurant.findOneAndUpdate(
+      { id: user.restaurantId },
+      { isActive: true }
+    );
+  }
+
+  sendResponse(res, 200, `User status updated to ${status}`, user);
+});
+
 // --- Categories ---
 export const getAllCategories = asyncHandler(async (req, res, next) => {
   const categories = await Category.find();
@@ -167,6 +211,12 @@ export const getAllCategories = asyncHandler(async (req, res, next) => {
 
 export const createCategory = asyncHandler(async (req, res, next) => {
   if (!req.body.id) req.body.id = Date.now().toString();
+  
+  // If a file was uploaded via Cloudinary, use its path
+  if (req.file) {
+    req.body.image = req.file.path;
+  }
+
   const category = await Category.create(req.body);
   sendResponse(res, 201, 'Category created', category);
 });
@@ -185,6 +235,12 @@ export const getAllBanners = asyncHandler(async (req, res, next) => {
 
 export const createBanner = asyncHandler(async (req, res, next) => {
   if (!req.body.id) req.body.id = Date.now().toString();
+
+  // If a file was uploaded via Cloudinary, use its path
+  if (req.file) {
+    req.body.image = req.file.path;
+  }
+
   const banner = await Banner.create(req.body);
   sendResponse(res, 201, 'Banner created', banner);
 });

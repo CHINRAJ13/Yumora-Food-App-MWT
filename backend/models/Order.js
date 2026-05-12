@@ -56,6 +56,10 @@ const orderSchema = new mongoose.Schema({
   deliveryNotes: {
     type: String,
     default: ''
+  },
+  location: {
+    lat: Number,
+    lng: Number
   }
 }, { timestamps: true });
 

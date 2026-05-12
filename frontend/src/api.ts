@@ -65,6 +65,7 @@ export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaura
 
 export const getAdminUsers = () => api.get("/admin/users");
 export const updateAdminUserRole = (id: string, data: { role: string; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
+export const updateAdminUserStatus = (id: string, status: string) => api.patch(`/admin/users/${id}/status`, { status });
 
 export const getAdminCategories = () => api.get("/admin/categories");
 export const createAdminCategory = (data: any) => api.post("/admin/categories", data);
@@ -97,6 +98,9 @@ export const getRestaurantStats = () => api.get("/restaurant-dash/stats");
 export const getRestaurantMenu = () => api.get("/restaurant-dash/menu");
 export const updateRestaurantMenu = (menu: any[]) => api.put("/restaurant-dash/menu", { menu });
 export const toggleRestaurantStatus = () => api.patch("/restaurant-dash/toggle-status");
+export const uploadMenuImage = (formData: FormData) => api.post("/restaurant-dash/menu/upload", formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 // User Profile Methods
 export const getUserProfile = () => api.get("/users/me");

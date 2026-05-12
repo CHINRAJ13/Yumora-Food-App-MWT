@@ -46,6 +46,15 @@ export const protect = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // 5) Check if user account is active
+  if (currentUser.status === 'pending') {
+    return next(new AppError('Your account is pending approval by an admin.', 403));
+  }
+  
+  if (currentUser.status === 'suspended') {
+    return next(new AppError('Your account has been suspended. Please contact support.', 403));
+  }
+
   // GRANT ACCESS TO PROTECTED ROUTE
   req.user = currentUser;
   next();

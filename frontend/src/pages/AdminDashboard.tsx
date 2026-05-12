@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminRestaurants from "@/components/admin/AdminRestaurants";
 import AdminUsers from "@/components/admin/AdminUsers";
+import AdminApprovals from "@/components/admin/AdminApprovals";
 import AdminCatalog from "@/components/admin/AdminCatalog";
+import * as api from "@/api";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -15,21 +17,42 @@ import {
   LogOut,
   Menu,
   X,
+  ShieldAlert,
+  Bell
 } from "lucide-react";
 
-type Tab = "overview" | "orders" | "restaurants" | "users" | "catalog";
+type Tab = "overview" | "orders" | "restaurants" | "users" | "approvals" | "catalog";
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "orders", label: "Orders", icon: ShoppingBag },
   { id: "restaurants", label: "Restaurants", icon: ChefHat },
   { id: "users", label: "Users", icon: Users },
+  { id: "approvals", label: "Approvals", icon: ShieldAlert },
   { id: "catalog", label: "Catalog", icon: Tag },
 ];
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    fetchPendingCount();
+    // Refresh count every 2 minutes
+    const interval = setInterval(fetchPendingCount, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchPendingCount = async () => {
+    try {
+      const res = await api.getAdminUsers();
+      const count = res.data.filter((u: any) => u.status === 'pending').length;
+      setPendingCount(count);
+    } catch (err) {
+      console.error("Failed to fetch pending count", err);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -41,6 +64,8 @@ const AdminDashboard = () => {
         return <AdminRestaurants />;
       case "users":
         return <AdminUsers />;
+      case "approvals":
+        return <AdminApprovals />;
       case "catalog":
         return <AdminCatalog />;
       default:
@@ -83,6 +108,12 @@ const AdminDashboard = () => {
                   )}
                   <tab.icon className="w-5 h-5 relative z-10" />
                   <span className="relative z-10">{tab.label}</span>
+                  
+                  {tab.id === "approvals" && pendingCount > 0 && (
+                    <span className="ml-auto relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white shadow-lg shadow-orange-200 animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -140,7 +171,12 @@ const AdminDashboard = () => {
                   }`}
                 >
                   <tab.icon className="w-5 h-5" />
-                  {tab.label}
+                  <span className="flex-1">{tab.label}</span>
+                  {tab.id === "approvals" && pendingCount > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white shadow-lg shadow-orange-200">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
               );
             })}

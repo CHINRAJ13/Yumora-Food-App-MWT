@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CreditCard, Banknote, CheckCircle, Timer, MapPin } from "lucide-react";
+import { ArrowLeft, CreditCard, Banknote, CheckCircle, Timer, MapPin, Crosshair, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { toast as hotToast } from "react-hot-toast";
@@ -20,6 +20,10 @@ const Checkout = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [locationCoords, setLocationCoords] = useState<{ lat: number, lng: number } | null>(null);
+
+  const savedAddress = JSON.parse(localStorage.getItem("yumora-saved-address") || "{}");
   
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -28,11 +32,46 @@ const Checkout = () => {
       email: user?.email || "",
       phone: user?.phone || "",
       paymentMethod: "cod",
-      line1: "",
-      line2: "",
-      pincode: ""
+      line1: savedAddress.line1 || "",
+      line2: savedAddress.line2 || "",
+      pincode: savedAddress.pincode || ""
     }
   });
+
+  const handleGetCurrentLocation = () => {
+    setFetchingLocation(true);
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      setFetchingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocationCoords({ lat: latitude, lng: longitude });
+        toast.success("Location captured! 📍");
+        setFetchingLocation(false);
+      },
+      (error) => {
+        console.error("Location error:", error);
+        toast.error("Failed to get location. Please enter address manually.");
+        setFetchingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  };
+
+  const saveAddressToLocal = (data: CheckoutFormData) => {
+    localStorage.setItem("yumora-saved-address", JSON.stringify({
+      name: data.name,
+      phone: data.phone,
+      email: data.email,
+      line1: data.line1,
+      line2: data.line2,
+      pincode: data.pincode
+    }));
+  };
 
   const paymentMethod = watch("paymentMethod");
 
@@ -128,8 +167,11 @@ const Checkout = () => {
         email: data.email,
         paymentMethod: "online",
         restaurantId: items[0]?.restaurantId || null,
-        restaurantName: items[0]?.restaurantName || null
+        restaurantName: items[0]?.restaurantName || null,
+        location: locationCoords
       });
+
+      saveAddressToLocal(data);
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_xxxx",
@@ -188,8 +230,11 @@ const Checkout = () => {
         email: data.email,
         paymentMethod: "cod",
         restaurantId: items[0]?.restaurantId || null,
-        restaurantName: items[0]?.restaurantName || null
+        restaurantName: items[0]?.restaurantName || null,
+        location: locationCoords
       });
+
+      saveAddressToLocal(data);
 
       if (res.status === 'success') {
         setOrderId(res.data._id);
@@ -242,9 +287,20 @@ const Checkout = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Address */}
           <div className="bg-card rounded-[2.5rem] shadow-card p-8 border border-gray-100">
-            <h3 className="text-lg font-black text-card-foreground mb-6 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" /> Delivery Address
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-card-foreground flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" /> Delivery Address
+              </h3>
+              <button 
+                type="button" 
+                onClick={handleGetCurrentLocation}
+                disabled={fetchingLocation}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider hover:bg-primary/20 transition-all disabled:opacity-50"
+              >
+                {fetchingLocation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Crosshair className="w-3 h-3" />}
+                {locationCoords ? "Location Captured" : "Use Current Location"}
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="sm:col-span-2 space-y-1.5">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Full Name</label>
