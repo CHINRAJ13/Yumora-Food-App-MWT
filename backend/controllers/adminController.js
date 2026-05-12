@@ -50,7 +50,7 @@ export const updateOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
+  const order = await Order.findByIdAndUpdate(id, { status }, { returnDocument: 'after' });
   
   if (!order) {
     return next(new AppError('Order not found', 404));
@@ -93,7 +93,7 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
       status: 'Out for Delivery',
       assignedAt: new Date()
     },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!order) {
@@ -143,7 +143,7 @@ export const updateRestaurant = asyncHandler(async (req, res, next) => {
     req.body.image = req.file.path;
   }
 
-  const restaurant = await Restaurant.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
+  const restaurant = await Restaurant.findOneAndUpdate({ id: req.params.id }, req.body, { returnDocument: 'after' });
   if (!restaurant) return next(new AppError('Restaurant not found', 404));
   sendResponse(res, 200, 'Restaurant updated', restaurant);
 });
@@ -165,7 +165,7 @@ export const updateUserRole = asyncHandler(async (req, res, next) => {
   const updateData = { role };
   if (restaurantId !== undefined) updateData.restaurantId = restaurantId;
 
-  const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
+  const user = await User.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
   if (!user) return next(new AppError('User not found', 404));
   sendResponse(res, 200, 'User updated successfully', user);
 });
@@ -185,7 +185,7 @@ export const updateUserStatus = asyncHandler(async (req, res, next) => {
   const user = await User.findByIdAndUpdate(
     req.params.id, 
     { status }, 
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (!user) {

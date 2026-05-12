@@ -20,7 +20,7 @@ const RestaurantMenuEditor = ({ menu, onSave, saving }: MenuEditorProps) => {
 
   const handleImageUpload = async (file: File, itemId: string | "new") => {
     const formData = new FormData();
-    formData.append("foodImage", file);
+    formData.append("image", file);
     setUploadingImage(itemId);
     try {
       const res: any = await api.uploadMenuImage(formData);
