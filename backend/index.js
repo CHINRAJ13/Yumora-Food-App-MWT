@@ -64,6 +64,12 @@ const allowedOrigins = [
   "http://127.0.0.1:8083"
 ];
 
+// Dynamically add production URLs from environment variables
+if (process.env.PROD_FRONTEND_URLS) {
+  const prodUrls = process.env.PROD_FRONTEND_URLS.split(',');
+  allowedOrigins.push(...prodUrls);
+}
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
