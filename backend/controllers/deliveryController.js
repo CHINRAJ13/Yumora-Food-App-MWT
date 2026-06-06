@@ -10,7 +10,7 @@ import {
   completeDeliveryService,
   getDeliveryStatsService
 } from '../services/deliveryService.js';
-import { emitOrderUpdate, emitOrderAccepted } from '../socket.js';
+import { emitOrderUpdate, emitOrderAccepted, emitTrackingStarted, emitTrackingEnded } from '../socket.js';
 
 /**
  * @desc    Get available orders for pickup
@@ -84,6 +84,7 @@ export const pickupOrder = asyncHandler(async (req, res, next) => {
     const order = await pickupOrderService(req.params.id, req.user._id);
 
     emitOrderUpdate(req.params.id, 'Out for Delivery', order);
+    emitTrackingStarted(req.params.id);
 
     sendResponse(res, 200, 'Order picked up successfully', order);
   } catch (err) {
@@ -101,6 +102,7 @@ export const completeOrder = asyncHandler(async (req, res, next) => {
     const order = await completeDeliveryService(req.params.id, req.user._id);
 
     emitOrderUpdate(req.params.id, 'Delivered', order);
+    emitTrackingEnded(req.params.id);
 
     sendResponse(res, 200, 'Delivery completed successfully', order);
   } catch (err) {

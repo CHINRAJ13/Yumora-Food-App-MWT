@@ -29,6 +29,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
 import restaurantDashRoutes from './routes/restaurantDashRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import locationRoutes from './routes/locationRoutes.js';
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
@@ -48,8 +49,40 @@ app.set('trust proxy', 1);
 // 1. GLOBAL MIDDLEWARES
 
 // Security Headers
-app.use(helmet());
+// app.use(helmet());
 app.use(cookieParser());
+
+// CORS
+const allowedOrigins = [
+  "http://localhost:8080",
+  "http://localhost:8081",
+  "http://localhost:8082",
+  "http://localhost:8083",
+  "http://127.0.0.1:8080",
+  "http://127.0.0.1:8081",
+  "http://127.0.0.1:8082",
+  "http://127.0.0.1:8083"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS Blocked Origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+// Data Sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Prevent Parameter Pollution
+app.use(hpp({
+  whitelist: ['price', 'rating', 'category'] // Allow duplicates for these fields
+}));
 
 // Logging
 if (process.env.NODE_ENV === 'development') {
@@ -68,20 +101,6 @@ app.use('/api', limiter);
 app.use(express.json({ limit: '10kb' })); // Limit body size
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Data Sanitization against NoSQL query injection
-app.use(mongoSanitize());
-
-// Prevent Parameter Pollution
-app.use(hpp({
-  whitelist: ['price', 'rating', 'category'] // Allow duplicates for these fields
-}));
-
-// CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:8080",
-  credentials: true
-}));
-
 // 2. ROUTES
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is healthy' });
@@ -97,9 +116,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/restaurant-dash', restaurantDashRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/locations', locationRoutes);
 
 // 3. ERROR HANDLING
 app.all('*', (req, res, next) => {
+  console.log(`❌ 404 Route Not Found: ${req.method} ${req.originalUrl}`);
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

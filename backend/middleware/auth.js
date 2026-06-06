@@ -50,12 +50,13 @@ export const protect = asyncHandler(async (req, res, next) => {
   if (currentUser.status === 'pending') {
     return next(new AppError('Your account is pending approval by an admin.', 403));
   }
-  
+
   if (currentUser.status === 'suspended') {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
   }
 
   // GRANT ACCESS TO PROTECTED ROUTE
+  console.log(`👤 User: ${currentUser.name} | Role: ${currentUser.role} | Status: ${currentUser.status}`);
   req.user = currentUser;
   next();
 });
@@ -67,6 +68,7 @@ export const restrictTo = (...roles) => {
   return (req, res, next) => {
     // roles ['admin', 'delivery']. role='user'
     if (!roles.includes(req.user.role)) {
+      console.log(`❌ Role Mismatch: User role "${req.user.role}" not in allowed roles [${roles.join(', ')}]`);
       return next(
         new AppError('You do not have permission to perform this action', 403)
       );

@@ -17,9 +17,6 @@ import Orders from "./pages/Orders";
 import Offers from "./pages/Offers";
 import Login from "./pages/Login";
 import Tracking from "./pages/Tracking";
-import AdminDashboard from "./pages/AdminDashboard";
-import DeliveryDashboard from "./pages/DeliveryDashboard";
-import RestaurantDashboard from "./pages/RestaurantDashboard";
 import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -48,67 +45,44 @@ const App = () => (
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/restaurants" element={<Restaurants />} />
               <Route path="/restaurant/:id" element={<RestaurantDetail />} />
-              
+
               <Route path="/cart" element={<Cart />} />
-              
-              <Route 
-                path="/checkout" 
+
+              <Route
+                path="/checkout"
                 element={
                   <ProtectedRoute>
-                  <Suspense fallback={<Loader />}>
-                    <Checkout />
-                  </Suspense>
+                    <Suspense fallback={<Loader />}>
+                      <Checkout />
+                    </Suspense>
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/orders" 
+              <Route
+                path="/orders"
                 element={
                   <ProtectedRoute>
                     <Orders />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/tracking/:orderId?" 
+              <Route
+                path="/tracking/:orderId?"
                 element={
                   <ProtectedRoute>
                     <Tracking />
                   </ProtectedRoute>
-                } 
+                }
               />
-              
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/delivery" 
-                element={
-                  <ProtectedRoute roles={["delivery"]}>
-                    <DeliveryDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/restaurant" 
-                element={
-                  <ProtectedRoute roles={["restaurant"]}>
-                    <RestaurantDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
+
+              {/* Administrative routes removed from Customer app */}
+              <Route
+                path="/profile"
                 element={
                   <ProtectedRoute>
                     <Profile />
                   </ProtectedRoute>
-                } 
+                }
               />
               <Route path="/offers" element={<Offers />} />
               <Route path="*" element={<NotFound />} />

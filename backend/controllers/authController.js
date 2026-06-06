@@ -12,10 +12,10 @@ import crypto from 'crypto';
  * @route   POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res, next) => {
-  let { 
-    name, email, password, phone, role, 
-    restaurantName, cuisines, 
-    vehicleNumber, licenseNumber, vehicleType 
+  let {
+    name, email, password, phone, role,
+    restaurantName, cuisines,
+    vehicleNumber, licenseNumber, vehicleType
   } = req.body;
 
   if (!phone || phone.trim() === "") {
@@ -26,8 +26,8 @@ export const register = asyncHandler(async (req, res, next) => {
   const allowedPublicRoles = ['user', 'delivery', 'restaurant'];
   const finalRole = (role && allowedPublicRoles.includes(role)) ? role : 'user';
 
-  // Set initial status: Restaurants and Delivery need approval
-  const initialStatus = (finalRole === 'restaurant' || finalRole === 'delivery') ? 'pending' : 'active';
+  // Set initial status: Simplified for role-based app specialization (active by default)
+  const initialStatus = 'active';
 
   // Prep role-specific details
   const deliveryDetails = finalRole === 'delivery' ? {
@@ -60,7 +60,7 @@ export const register = asyncHandler(async (req, res, next) => {
       rating: 0,
       isActive: false // Hidden until admin approval
     });
-    
+
     newUser.restaurantId = restaurantId;
     await newUser.save({ validateBeforeSave: false });
   }
@@ -109,7 +109,7 @@ export const login = asyncHandler(async (req, res, next) => {
   if (user.status === 'pending') {
     return next(new AppError('Your account is pending approval by an admin.', 403));
   }
-  
+
   if (user.status === 'suspended') {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
   }
@@ -144,11 +144,11 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   let user = await User.findOne({ phone });
   if (!user) {
-    user = await User.create({ 
-      phone, 
+    user = await User.create({
+      phone,
       name: `User_${phone.slice(-4)}`,
       email: `${phone}@yumora.com`, // Temporary email
       password: crypto.randomBytes(8).toString('hex') // Random password
@@ -174,10 +174,10 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
 export const verifyOTP = asyncHandler(async (req, res, next) => {
   const { phone, otp } = req.body;
 
-  const user = await User.findOne({ 
-    phone, 
-    otp, 
-    otpExpires: { $gt: Date.now() } 
+  const user = await User.findOne({
+    phone,
+    otp,
+    otpExpires: { $gt: Date.now() }
   });
 
   if (!user) {
@@ -203,11 +203,11 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   }
 
   // 1) Find user by email OR phone
-  const user = await User.findOne({ 
+  const user = await User.findOne({
     $or: [
-      { email: email || 'never_match_placeholder' }, 
+      { email: email || 'never_match_placeholder' },
       { phone: phone || 'never_match_placeholder' }
-    ] 
+    ]
   });
 
   if (!user) {
@@ -221,14 +221,14 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   // 3) Send it via Email and SMS
   // Construct reset URL (use process.env.FRONTEND_URL in production)
   const resetURL = `${req.protocol}://${req.get('host').replace('5000', '8080')}/reset-password/${resetToken}`;
-  
+
   const message = `Forgot your password? Submit a PATCH request with your new password to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
 
   try {
     if (user.email && (email || !phone)) {
       await sendEmail(user.email, 'Your password reset token (valid for 10 min)', message);
     }
-    
+
     if (user.phone && (phone || !email)) {
       await sendSMS(user.phone, `Your password reset link: ${resetURL}`);
     }

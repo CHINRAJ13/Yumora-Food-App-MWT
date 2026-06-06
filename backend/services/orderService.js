@@ -8,11 +8,11 @@ export const createOrderService = async (orderData) => {
 
   // Notifications (Async)
   const deliverTime = "35-45 mins";
-  
+
   if (order.email) {
     const itemDetails = order.items.map(i => `• ${i.name} x ${i.quantity}`).join("\n");
     const emailText = `Your order #${order._id.toString().substring(0, 8)} has been placed!\n\nItems:\n${itemDetails}\n\nTotal: ₹${order.totalAmount}\nDelivery Address: ${order.address}\nEst. Delivery: ${deliverTime}\n\nThank you for choosing Yumora!`;
-    
+
     sendEmail(order.email, "Order Confirmed 🎉 - Yumora", emailText)
       .catch(err => console.error("Email failed:", err.message));
   }
@@ -29,6 +29,10 @@ export const createOrderService = async (orderData) => {
 
 export const getUserOrdersService = async (userId) => {
   return await Order.find({ userId }).sort({ createdAt: -1 });
+};
+
+export const getOrderByIdService = async (id) => {
+  return await Order.findById(id);
 };
 
 export const updateOrderStatusService = async (id, status) => {

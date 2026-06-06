@@ -16,7 +16,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register, setAuth, isAuthenticated, user } = useAuthStore();
-  
+
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,29 +30,13 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState("user");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
-  // Role-specific fields
-  const [restaurantName, setRestaurantName] = useState("");
-  const [restaurantImage, setRestaurantImage] = useState<File | null>(null);
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [vehicleType, setVehicleType] = useState("Bike");
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // Role-based redirect after login
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else if (user.role === 'delivery') {
-        navigate('/delivery');
-      } else if (user.role === 'restaurant') {
-        navigate('/restaurant');
-      } else {
-        const returnUrl = location.state?.from || "/";
-        navigate(returnUrl);
-      }
-    }
-  }, [isAuthenticated, user, navigate, location]);
+  // Role-specific fields removed from Customer app
+
+  if (isAuthenticated && user) {
+    const returnUrl = location.state?.from || "/";
+    navigate(returnUrl);
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,33 +63,15 @@ const Login = () => {
     setError(null);
     setSuccessMessage(null);
     try {
-      const signupData: any = { 
-        name: fullName, 
-        email, 
-        password, 
-        phone: phoneNumber, 
-        role,
-        restaurantName: role === 'restaurant' ? restaurantName : undefined,
-        vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
-        licenseNumber: role === 'delivery' ? licenseNumber : undefined,
-        vehicleType: role === 'delivery' ? vehicleType : undefined
+      const signupData: any = {
+        name: fullName,
+        email,
+        password,
+        phone: phoneNumber,
+        role: 'user'
       };
 
-      let finalData;
-      if (role === 'restaurant' && restaurantImage) {
-        const formData = new FormData();
-        Object.keys(signupData).forEach(key => {
-          if (signupData[key] !== undefined) {
-            formData.append(key, signupData[key]);
-          }
-        });
-        formData.append('image', restaurantImage);
-        finalData = formData;
-      } else {
-        finalData = signupData;
-      }
-
-      const res: any = await register(finalData);
+      const res: any = await register(signupData);
       if (res.status === 'success' && !res.token) {
         setSuccessMessage(res.message);
         toast({ title: "Registration Received", description: res.message });
@@ -155,8 +121,8 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070')] bg-cover bg-center py-12 px-4 relative">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md space-y-4 relative z-10"
@@ -176,7 +142,7 @@ const Login = () => {
               Pick your preferred login method
             </CardDescription>
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-4 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 flex items-center gap-2"
@@ -222,9 +188,9 @@ const Login = () => {
                       <OTPInput onComplete={handleVerifyOtp} disabled={otpLoading} />
                       <p className="text-xs text-gray-500 mt-4">Code sent to <span className="font-bold">{phoneNumber}</span></p>
                     </div>
-                    <Button 
-                      onClick={() => handleVerifyOtp()} 
-                      className="w-full h-12 rounded-xl gradient-primary font-bold shadow-lg" 
+                    <Button
+                      onClick={() => handleVerifyOtp()}
+                      className="w-full h-12 rounded-xl gradient-primary font-bold shadow-lg"
                       disabled={otpLoading || otp.length < 6}
                     >
                       {otpLoading ? "Verifying..." : "Verify & Sign In"}
@@ -266,8 +232,8 @@ const Login = () => {
                       </button>
                     </div>
                     <div className="flex justify-end">
-                      <Link 
-                        to="/forgot-password" 
+                      <Link
+                        to="/forgot-password"
                         className="text-xs font-bold text-primary hover:underline transition-all"
                       >
                         Forgot Password?
@@ -282,7 +248,7 @@ const Login = () => {
 
               <TabsContent value="signup" className="space-y-4 mt-6">
                 {successMessage ? (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-6 text-center py-8"
@@ -292,8 +258,8 @@ const Login = () => {
                     </div>
                     <h3 className="text-xl font-black text-gray-900">Application Received</h3>
                     <p className="text-gray-600 font-medium px-4">{successMessage}</p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setSuccessMessage(null)}
                       className="mt-6 rounded-xl font-bold"
                     >
@@ -302,88 +268,12 @@ const Login = () => {
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
-                        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Join As</Label>
-                        <select 
-                          value={role} 
-                          onChange={(e) => setRole(e.target.value)}
-                          className="w-full h-10 px-3 bg-white/50 border border-input rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
-                        >
-                          <option value="user">Customer</option>
-                          <option value="restaurant">Restaurant Owner</option>
-                          <option value="delivery">Delivery Rider</option>
-                        </select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
+                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
                     </div>
 
-                    {role === 'restaurant' && (
-                      <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Restaurant Name</Label>
-                          <Input 
-                            value={restaurantName} 
-                            onChange={(e) => setRestaurantName(e.target.value)} 
-                            placeholder="e.g. Royal Cafe" 
-                            required 
-                            className="h-10 bg-orange-50/50 border-orange-200 rounded-xl" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Hotel Card / Business Proof</Label>
-                          <div className="flex gap-4 items-start">
-                            <div className="flex-1">
-                              <Input 
-                                type="file" 
-                                onChange={(e) => setRestaurantImage(e.target.files?.[0] || null)} 
-                                accept="image/*"
-                                required 
-                                className="h-10 bg-orange-50/50 border-orange-200 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" 
-                              />
-                              <p className="text-[9px] text-gray-500 italic ml-1 mt-1">* Required for verification</p>
-                            </div>
-                            {restaurantImage && (
-                              <div className="w-16 h-16 rounded-xl border-2 border-orange-200 overflow-hidden bg-white shrink-0 shadow-sm">
-                                <img 
-                                  src={URL.createObjectURL(restaurantImage)} 
-                                  alt="Preview" 
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {role === 'delivery' && (
-                      <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Vehicle Number</Label>
-                          <Input 
-                            value={vehicleNumber} 
-                            onChange={(e) => setVehicleNumber(e.target.value)} 
-                            placeholder="TN 37 AB 1234" 
-                            required 
-                            className="h-10 bg-blue-50/50 border-blue-200 rounded-xl text-xs" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">License No.</Label>
-                          <Input 
-                            value={licenseNumber} 
-                            onChange={(e) => setLicenseNumber(e.target.value)} 
-                            placeholder="DL-12345678" 
-                            required 
-                            className="h-10 bg-blue-50/50 border-blue-200 rounded-xl text-xs" 
-                          />
-                        </div>
-                      </motion.div>
-                    )}
+                    {/* Non-customer fields removed from Customer app registration */}
 
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Email</Label>

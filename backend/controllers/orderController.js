@@ -10,17 +10,18 @@ import { emitOrderUpdate, emitNewOrder } from '../socket.js';
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res, next) => {
-  const { 
-    items, 
-    totalAmount, 
-    address, 
-    email, 
-    phone, 
+  const {
+    items,
+    totalAmount,
+    address,
+    email,
+    phone,
     paymentMethod,
     paymentId,
     paymentStatus,
     restaurantId,
-    restaurantName
+    restaurantName,
+    location
   } = req.body;
 
   // 1. Validation
@@ -41,6 +42,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     phone: phone || req.user?.phone,
     restaurantId: restaurantId || items[0]?.restaurantId || null,
     restaurantName: restaurantName || items[0]?.restaurantName || null,
+    location,
     status: "Placed"
   };
 
@@ -61,13 +63,26 @@ export const createOrder = asyncHandler(async (req, res, next) => {
  */
 export const getUserOrders = asyncHandler(async (req, res, next) => {
   const userId = req.user?._id || req.params.userId;
-  
+
   if (!userId) {
     return next(new AppError('User ID is required', 400));
   }
 
   const orders = await orderService.getUserOrdersService(userId);
   sendResponse(res, 200, 'Orders retrieved successfully', orders);
+});
+
+/**
+ * @desc    Get order by ID
+ * @route   GET /api/orders/single/:id
+ * @access  Private
+ */
+export const getOrderById = asyncHandler(async (req, res, next) => {
+  const order = await orderService.getOrderByIdService(req.params.id);
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+  sendResponse(res, 200, 'Order retrieved successfully', order);
 });
 
 /**
