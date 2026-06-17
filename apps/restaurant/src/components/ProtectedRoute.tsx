@@ -11,6 +11,11 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   const { isAuthenticated, user, loading } = useAuthStore();
   const location = useLocation();
 
+  // If authenticated restaurant user is not approved, redirect to approval status page
+  if (isAuthenticated && user?.role === 'restaurant' && user.restaurantStatus !== 'approved') {
+    return <Navigate to="/approval-status" replace />;
+  }
+
   if (loading) {
     return <div className="h-screen w-screen flex items-center justify-center">Loading...</div>;
   }

@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as api from '../api';
 
-interface User {
+export interface User {
   _id: string;
   name: string;
   email: string;
   phone?: string;
   role: 'user' | 'admin' | 'delivery' | 'restaurant';
+  restaurantStatus?: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  adminComment?: string;
 }
 
 interface AuthState {

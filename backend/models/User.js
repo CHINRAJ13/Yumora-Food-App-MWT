@@ -24,6 +24,20 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'delivery', 'restaurant'],
     default: 'user'
   },
+  restaurantStatus: {
+    type: String,
+    enum: ['pending', 'reviewing', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  deliveryStatus: {
+    type: String,
+    enum: ['pending', 'reviewing', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  adminComment: {
+    type: String,
+    default: null
+  },
   status: {
     type: String,
     enum: ['pending', 'active', 'suspended'],
@@ -40,6 +54,14 @@ const userSchema = new mongoose.Schema({
       type: String,
       enum: ['Bike', 'Scooter', 'Cycle'],
       default: 'Bike'
+    },
+    // Additional verification fields for delivery partners
+    licenseImage: { type: String, default: null }, // URL to uploaded license image
+    insuranceDocument: { type: String, default: null }, // URL to insurance proof
+    backgroundCheckStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'failed'],
+      default: 'pending'
     }
   },
   password: {

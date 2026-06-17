@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Login from "./pages/Login";
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import NotFound from "./pages/NotFound";
+import ApprovalStatus from "./pages/ApprovalStatus";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -29,6 +30,7 @@ const App = () => (
           <HashRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/approval-status" element={<ApprovalStatus />} />
               <Route 
                 path="/" 
                 element={

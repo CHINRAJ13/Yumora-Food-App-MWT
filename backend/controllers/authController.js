@@ -26,10 +26,10 @@ export const register = asyncHandler(async (req, res, next) => {
   const allowedPublicRoles = ['user', 'delivery', 'restaurant'];
   const finalRole = (role && allowedPublicRoles.includes(role)) ? role : 'user';
 
-  // Set initial status: Simplified for role-based app specialization (active by default)
-  const initialStatus = 'active';
+  // Set initial status based on role
+  const initialStatus = finalRole === 'restaurant' ? 'pending' : 'active';
 
-  // Prep role-specific details
+  // Prepare role-specific details
   const deliveryDetails = finalRole === 'delivery' ? {
     vehicleNumber,
     licenseNumber,
@@ -43,10 +43,11 @@ export const register = asyncHandler(async (req, res, next) => {
     phone,
     role: finalRole,
     status: initialStatus,
-    deliveryDetails
+    deliveryDetails,
+    restaurantStatus: finalRole === 'restaurant' ? 'pending' : undefined
   });
 
-  // If Restaurant owner, create the restaurant profile
+  // If Restaurant owner, create the restaurant profile (inactive until approved)
   if (finalRole === 'restaurant') {
     const restaurantId = `rest_${Date.now()}`;
     await Restaurant.create({
@@ -65,10 +66,11 @@ export const register = asyncHandler(async (req, res, next) => {
     await newUser.save({ validateBeforeSave: false });
   }
 
+  // If user is pending (restaurant), respond with pending message
   if (newUser.status === 'pending') {
     return res.status(201).json({
       status: 'success',
-      message: 'Registration successful! Your account is pending admin approval. Please wait for verification.',
+      message: 'Registration successful! Your restaurant account is pending admin approval.',
       data: {
         user: {
           id: newUser._id,
@@ -77,12 +79,14 @@ export const register = asyncHandler(async (req, res, next) => {
           role: newUser.role,
           status: newUser.status,
           restaurantId: newUser.restaurantId,
+          restaurantStatus: newUser.restaurantStatus,
           deliveryDetails: newUser.deliveryDetails
         }
       }
     });
   }
 
+  // For non-restaurant users, proceed with token creation
   createSendToken(newUser, 201, res);
 });
 
@@ -112,6 +116,11 @@ export const login = asyncHandler(async (req, res, next) => {
 
   if (user.status === 'suspended') {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
+  }
+
+  // Additional check for restaurant status
+  if (user.role === 'restaurant' && user.restaurantStatus === 'rejected') {
+    return next(new AppError('Your restaurant application was rejected. Contact admin for details.', 403));
   }
 
   // 4) If everything ok, send token to client

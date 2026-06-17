@@ -193,31 +193,69 @@ export const updateUserRole = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const updateUserStatus = asyncHandler(async (req, res, next) => {
-  const { status } = req.body;
+  const { status, comment } = req.body;
 
   if (!status || !['pending', 'active', 'suspended'].includes(status)) {
     return next(new AppError('Please provide a valid status', 400));
   }
 
   const user = await User.findByIdAndUpdate(
-    req.params.id, 
-    { status }, 
-    { returnDocument: 'after', runValidators: true }
+    req.params.id,
+    { status },
+    { new: true, runValidators: true }
   );
 
   if (!user) {
     return next(new AppError('User not found', 404));
   }
 
-  // If approving a restaurant owner, also activate the restaurant profile
-  if (user.role === 'restaurant' && status === 'active' && user.restaurantId) {
-    await Restaurant.findOneAndUpdate(
-      { id: user.restaurantId },
-      { isActive: true }
-    );
+  // If the user is a restaurant owner, handle restaurantStatus and activation
+  if (user.role === 'restaurant') {
+    let restaurantStatusUpdate = {};
+    if (status === 'active') {
+      // Approve restaurant
+      restaurantStatusUpdate = { restaurantStatus: 'approved' };
+      await Restaurant.findOneAndUpdate({ id: user.restaurantId }, { isActive: true });
+    } else if (status === 'suspended') {
+      // Reject restaurant
+      restaurantStatusUpdate = { restaurantStatus: 'rejected', adminComment: comment || null };
+    }
+    await User.findByIdAndUpdate(user._id, restaurantStatusUpdate);
+
+    // Send email notification
+    const emailSubject = status === 'active' ? 'Your restaurant has been approved' : 'Your restaurant application was rejected';
+    const emailText = status === 'active'
+      ? 'Congratulations! Your restaurant account is now approved and active.'
+      : `We regret to inform you that your restaurant application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
+    await sendEmail(user.email, emailSubject, emailText);
   }
 
+  // If the user is a delivery boy, handle deliveryStatus
+  if (user.role === 'delivery') {
+    let deliveryStatusUpdate = {};
+    if (status === 'active') {
+      // Approve delivery boy
+      deliveryStatusUpdate = { deliveryStatus: 'approved' };
+    } else if (status === 'suspended') {
+      // Reject delivery boy
+      deliveryStatusUpdate = { deliveryStatus: 'rejected', adminComment: comment || null };
+    }
+    await User.findByIdAndUpdate(user._id, deliveryStatusUpdate);
+
+    // Send email notification (reuse generic sendEmail)
+    const emailSubject = status === 'active' ? 'Your delivery account has been approved' : 'Your delivery application was rejected';
+    const emailText = status === 'active'
+      ? 'Congratulations! Your delivery account is now approved and active.'
+      : `We regret to inform you that your delivery application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
+    await sendEmail(user.email, emailSubject, emailText);
+  }
   sendResponse(res, 200, `User status updated to ${status}`, user);
+});
+
+export const deleteCategory = asyncHandler(async (req, res, next) => {
+  const category = await Category.findOneAndDelete({ id: req.params.id });
+  if (!category) return next(new AppError('Category not found', 404));
+  sendResponse(res, 200, 'Category deleted', null);
 });
 
 // --- Categories ---
@@ -236,12 +274,6 @@ export const createCategory = asyncHandler(async (req, res, next) => {
 
   const category = await Category.create(req.body);
   sendResponse(res, 201, 'Category created', category);
-});
-
-export const deleteCategory = asyncHandler(async (req, res, next) => {
-  const category = await Category.findOneAndDelete({ id: req.params.id });
-  if (!category) return next(new AppError('Category not found', 404));
-  sendResponse(res, 200, 'Category deleted', null);
 });
 
 // --- Banners ---

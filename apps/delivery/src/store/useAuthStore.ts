@@ -7,7 +7,8 @@ interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'user' | 'admin' | 'delivery' | 'restaurant';
+  deliveryStatus: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  adminComment?: string | null;
 }
 
 interface AuthState {
