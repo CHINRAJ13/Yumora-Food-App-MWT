@@ -53,9 +53,11 @@ const AdminOrders = () => {
     fetchOrders();
     fetchDeliveryPersons();
 
-    // Connect to Socket.io (proxied through Vite in dev)
-    const socket = io({
+    // Connect to Socket.io
+    const SOCKET_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const socket = io(SOCKET_URL, {
       withCredentials: true,
+      transports: ["websocket", "polling"]
     });
     socketRef.current = socket;
 
