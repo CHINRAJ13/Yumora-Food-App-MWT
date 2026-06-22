@@ -6,13 +6,9 @@ import User from '../models/User.js';
  * Get the restaurant linked to the current user
  */
 export const getMyRestaurant = async (userId) => {
-  const user = await User.findById(userId);
-  if (!user || !user.restaurantId) {
-    throw new Error('No restaurant linked to this account');
-  }
-  const restaurant = await Restaurant.findOne({ id: user.restaurantId });
+  const restaurant = await Restaurant.findOne({ ownerId: userId });
   if (!restaurant) {
-    throw new Error('Restaurant not found');
+    throw new Error('No restaurant linked to this account');
   }
   return restaurant;
 };

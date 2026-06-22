@@ -1,4 +1,6 @@
 import User from '../models/User.js';
+import DeliveryProfile from '../models/DeliveryProfile.js';
+import Restaurant from '../models/Restaurant.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
@@ -15,7 +17,49 @@ export const getMe = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
 
-  sendResponse(res, 200, 'User profile fetched', user);
+  // Build comprehensive profile response with role-specific data
+  const profileData = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    roles: user.roles,
+    status: user.status,
+    availability: user.availability,
+    createdAt: user.createdAt,
+  };
+
+  // Add delivery-specific fields from DeliveryProfile collection
+  if (user.roles.includes('delivery')) {
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: user._id });
+    if (deliveryProfile) {
+      profileData.deliveryProfile = {
+        status: deliveryProfile.status,
+        vehicleNumber: deliveryProfile.vehicleNumber,
+        licenseNumber: deliveryProfile.licenseNumber,
+        vehicleType: deliveryProfile.vehicleType,
+        rating: deliveryProfile.rating,
+        totalRatings: deliveryProfile.totalRatings,
+        adminComment: deliveryProfile.adminComment
+      };
+    }
+  }
+
+  // Add restaurant-specific fields from Restaurant collection
+  if (user.roles.includes('restaurant')) {
+    const restaurant = await Restaurant.findOne({ ownerId: user._id });
+    if (restaurant) {
+      profileData.restaurant = {
+        id: restaurant.id,
+        name: restaurant.name,
+        approvalStatus: restaurant.approvalStatus,
+        isActive: restaurant.isActive,
+        adminComment: restaurant.adminComment
+      };
+    }
+  }
+
+  sendResponse(res, 200, 'User profile fetched', profileData);
 });
 
 /**
@@ -34,16 +78,97 @@ export const updateMe = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 2) Filtered out unwanted fields names that are not allowed to be updated
-  const filteredBody = filterObj(req.body, 'name', 'email', 'phone');
+  // 2) Explicitly block email changes (mandatory/identity field)
+  if (req.body.email) {
+    return next(
+      new AppError('Email is a mandatory field and cannot be changed.', 400)
+    );
+  }
 
-  // 3) Update user document
+  // 3) Filter allowed general fields (email removed — it's uneditable)
+  const filteredBody = filterObj(req.body, 'name', 'phone');
+
+  // 4) Handle delivery-specific field updates with re-verification
+  let requiresReverification = false;
+  if (req.user.roles.includes('delivery') && req.body.deliveryDetails) {
+    const allowedDeliveryFields = ['vehicleNumber', 'licenseNumber', 'vehicleType'];
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: req.user._id });
+    const incomingDetails = req.body.deliveryDetails;
+
+    if (deliveryProfile) {
+      // Check if any delivery detail actually changed
+      for (const field of allowedDeliveryFields) {
+        if (incomingDetails[field] !== undefined && incomingDetails[field] !== deliveryProfile[field]) {
+          requiresReverification = true;
+          break;
+        }
+      }
+
+      // Update the DeliveryProfile document
+      const profileUpdate = {};
+      allowedDeliveryFields.forEach(field => {
+        if (incomingDetails[field] !== undefined) {
+          profileUpdate[field] = incomingDetails[field];
+        }
+      });
+
+      // Reset delivery profile status to pending for admin re-verification
+      if (requiresReverification) {
+        profileUpdate.status = 'pending';
+        // Also set user account to pending
+        filteredBody.status = 'pending';
+      }
+
+      await DeliveryProfile.findByIdAndUpdate(deliveryProfile._id, profileUpdate);
+    }
+  }
+
+  // 5) Update user document
   const updatedUser = await User.findByIdAndUpdate(req.user._id, filteredBody, {
     new: true,
     runValidators: true
   });
 
-  sendResponse(res, 200, 'User profile updated', updatedUser);
+  // Build response with role-specific data
+  const responseData = {
+    _id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    phone: updatedUser.phone,
+    roles: updatedUser.roles,
+    status: updatedUser.status,
+    createdAt: updatedUser.createdAt,
+  };
+
+  if (updatedUser.roles.includes('delivery')) {
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: updatedUser._id });
+    if (deliveryProfile) {
+      responseData.deliveryProfile = {
+        status: deliveryProfile.status,
+        vehicleNumber: deliveryProfile.vehicleNumber,
+        licenseNumber: deliveryProfile.licenseNumber,
+        vehicleType: deliveryProfile.vehicleType
+      };
+    }
+  }
+
+  if (updatedUser.roles.includes('restaurant')) {
+    const restaurant = await Restaurant.findOne({ ownerId: updatedUser._id });
+    if (restaurant) {
+      responseData.restaurant = {
+        id: restaurant.id,
+        name: restaurant.name,
+        approvalStatus: restaurant.approvalStatus,
+        isActive: restaurant.isActive
+      };
+    }
+  }
+
+  const message = requiresReverification
+    ? 'Profile updated. Your delivery details are now pending admin re-verification.'
+    : 'User profile updated';
+
+  sendResponse(res, 200, message, responseData);
 });
 
 const filterObj = (obj, ...allowedFields) => {

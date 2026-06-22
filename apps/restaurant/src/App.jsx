@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import NotFound from "./pages/NotFound";
 import ApprovalStatus from "./pages/ApprovalStatus";
+import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -27,10 +30,20 @@ const App = () => (
           <Toaster />
           <Sonner />
           <HotToaster position="top-center" />
-          <HashRouter>
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/approval-status" element={<ApprovalStatus />} />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute roles={["restaurant"]}>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/" 
                 element={

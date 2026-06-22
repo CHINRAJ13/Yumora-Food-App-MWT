@@ -11,6 +11,11 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   const { isAuthenticated, user, loading } = useAuthStore();
   const location = useLocation();
 
+  // If authenticated delivery user is not approved, redirect to approval status page
+  if (isAuthenticated && user?.roles?.includes('delivery') && (user as any).status !== 'active') {
+    return <Navigate to="/approval-status" replace />;
+  }
+
   if (loading) {
     return <div className="h-screen w-screen flex items-center justify-center">Loading...</div>;
   }
@@ -22,11 +27,11 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   // Unify role checking: support both 'roles' array and 'requiredRole' string
   const allowedRoles = roles || (requiredRole ? [requiredRole] : null);
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on actual role
-    if (user.role === 'admin') return <Navigate to="/admin" replace />;
-    if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
-    if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
+  if (allowedRoles && user && !allowedRoles.some(r => user.roles?.includes(r as any))) {
+    // Redirect to appropriate dashboard based on actual roles
+    if (user.roles?.includes('admin')) return <Navigate to="/admin" replace />;
+    if (user.roles?.includes('delivery')) return <Navigate to="/delivery" replace />;
+    if (user.roles?.includes('restaurant')) return <Navigate to="/restaurant" replace />;
     return <Navigate to="/" replace />;
   }
 

@@ -29,6 +29,7 @@ const AdminApprovals = () => {
       // Filter for pending users on the frontend for now
       const pending = res.data.filter((u: any) => u.status === 'pending');
       setUsers(pending);
+      // console.log(pending)
     } catch {
       toast.error("Failed to fetch pending users");
     } finally {
@@ -84,24 +85,24 @@ const AdminApprovals = () => {
             >
               {/* Role Indicator Strip */}
               <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                user.role === 'restaurant' ? 'bg-purple-500' : 'bg-blue-500'
+                user.roles?.includes('restaurant') ? 'bg-purple-500' : 'bg-blue-500'
               }`} />
 
               <div className="flex flex-col h-full">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl ${
-                      user.role === 'restaurant' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+                      user.roles?.includes('restaurant') ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
                     }`}>
-                      {user.role === 'restaurant' ? <ChefHat /> : <Truck />}
+                      {user.roles?.includes('restaurant') ? <ChefHat /> : <Truck />}
                     </div>
                     <div>
                       <h3 className="font-black text-gray-900">{user.name}</h3>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-black uppercase tracking-widest ${
-                          user.role === 'restaurant' ? 'text-purple-500' : 'text-blue-500'
+                          user.roles?.includes('restaurant') ? 'text-purple-500' : 'text-blue-500'
                         }`}>
-                          {user.role} Applicant
+                          {user.roles?.includes('restaurant') ? 'restaurant' : 'delivery'} Applicant
                         </span>
                         <span className="w-1 h-1 rounded-full bg-gray-200" />
                         <span className="text-[10px] text-gray-400 font-bold uppercase">{new Date(user.createdAt).toLocaleDateString()}</span>
@@ -128,8 +129,21 @@ const AdminApprovals = () => {
                       <p className="text-xs font-bold text-gray-700">{user.phone || 'N/A'}</p>
                     </div>
 
-                    {user.role === 'restaurant' && (
+                    {user.roles?.includes('restaurant') && (
                       <div className="col-span-2 pt-2 border-t border-gray-100 mt-2">
+                        <div className="flex items-center gap-3 mb-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+                          {user.restaurantDetails?.image ? (
+                            <img src={user.restaurantDetails.image} alt={user.restaurantDetails.name || 'Restaurant'} className="w-10 h-10 rounded-lg object-cover bg-gray-50" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">No Img</span>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Restaurant Name</p>
+                            <p className="text-xs font-black text-gray-800">{user.restaurantDetails?.name || 'Pending Info'}</p>
+                          </div>
+                        </div>
                          <p className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1">
                           <Info className="w-3 h-3" /> Verification Needed
                         </p>
@@ -139,7 +153,7 @@ const AdminApprovals = () => {
                       </div>
                     )}
 
-                    {user.role === 'delivery' && (
+                    {user.roles?.includes('delivery') && (
                       <>
                         <div className="space-y-1 pt-2 border-t border-gray-100">
                           <p className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Vehicle No.</p>

@@ -51,6 +51,7 @@ const AdminUsers = () => {
     try {
       const res = await api.getAdminUsers();
       setUsers(res.data);
+      // console.log(users)
     } catch {
       toast.error("Failed to fetch users");
     } finally {
@@ -77,19 +78,9 @@ const AdminUsers = () => {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string, restaurantId?: string) => {
-    try {
-      await api.updateAdminUserRole(userId, { role: newRole, restaurantId });
-      toast.success(`User updated successfully`);
-      fetchUsers();
-    } catch {
-      toast.error("Failed to update user");
-    }
-  };
-
   const filtered = users.filter(
     (u) =>
-      u.role === activeTab &&
+      u.roles?.includes(activeTab) &&
       (u.name?.toLowerCase().includes(search.toLowerCase()) ||
        u.email?.toLowerCase().includes(search.toLowerCase()))
   );
@@ -120,7 +111,7 @@ const AdminUsers = () => {
       <div className="flex items-center gap-2 p-1 bg-gray-100/50 rounded-2xl w-fit border border-gray-200/50">
         {roleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
-          const count = users.filter(u => u.role === tab.id).length;
+          const count = users.filter(u => u.roles?.includes(tab.id)).length;
           return (
             <button
               key={tab.id}
@@ -234,10 +225,10 @@ const AdminUsers = () => {
                           <div className="space-y-1">
                             <p className="flex items-center gap-1.5 text-xs font-bold text-purple-600">
                               <LayoutDashboard className="w-3 h-3" />
-                              {restaurants.find(r => r.id === user.restaurantId)?.name || 'Not Linked'}
+                              {user.restaurantDetails?.name || 'Not Linked'}
                             </p>
                             <p className="text-[10px] text-gray-400 font-medium italic">
-                              ID: {user.restaurantId || 'None'}
+                              ID: {user.restaurantDetails?.id || 'None'}
                             </p>
                           </div>
                         </td>
@@ -258,19 +249,7 @@ const AdminUsers = () => {
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex flex-col gap-2">
-                          <select
-                            value={user.role}
-                            onChange={(e) =>
-                              handleRoleChange(user._id, e.target.value, user.restaurantId)
-                            }
-                            className="text-[10px] font-bold bg-gray-100 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 cursor-pointer outline-none transition-all"
-                          >
-                            <option value="user">User</option>
-                            <option value="restaurant">Restaurant</option>
-                            <option value="delivery">Delivery</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                          
+
                           <select
                             value={user.status || 'active'}
                             onChange={(e) => handleStatusChange(user._id, e.target.value)}

@@ -19,50 +19,15 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true // Allow null for users who register via email only
   },
-  role: {
-    type: String,
+  roles: {
+    type: [String],
     enum: ['user', 'admin', 'delivery', 'restaurant'],
-    default: 'user'
-  },
-  restaurantStatus: {
-    type: String,
-    enum: ['pending', 'reviewing', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  deliveryStatus: {
-    type: String,
-    enum: ['pending', 'reviewing', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  adminComment: {
-    type: String,
-    default: null
+    default: ['user']
   },
   status: {
     type: String,
     enum: ['pending', 'active', 'suspended'],
     default: 'active'
-  },
-  restaurantId: {
-    type: String,
-    default: null // Links restaurant-role user to their restaurant
-  },
-  deliveryDetails: {
-    vehicleNumber: String,
-    licenseNumber: String,
-    vehicleType: {
-      type: String,
-      enum: ['Bike', 'Scooter', 'Cycle'],
-      default: 'Bike'
-    },
-    // Additional verification fields for delivery partners
-    licenseImage: { type: String, default: null }, // URL to uploaded license image
-    insuranceDocument: { type: String, default: null }, // URL to insurance proof
-    backgroundCheckStatus: {
-      type: String,
-      enum: ['pending', 'verified', 'failed'],
-      default: 'pending'
-    }
   },
   password: {
     type: String,
@@ -79,10 +44,33 @@ const userSchema = new mongoose.Schema({
   },
   passwordChangedAt: Date,
   passwordResetToken: String,
-  passwordResetExpires: Date
+  passwordResetExpires: Date,
+  // Availability flag: true = online/available, false = offline/unavailable
+  availability: { type: Boolean, default: false },
+  // Delivery user rating, default 4.5 stars
+  rating: {
+    type: Number,
+    default: 4.5,
+    min: 0,
+    max: 5
+  },
+  // GeoJSON location for proximity calculations
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0]
+    }
+  }
 }, {
   timestamps: true
 });
+
+userSchema.index({ location: '2dsphere' });
 
 // Hash password before saving
 userSchema.pre('save', async function() {

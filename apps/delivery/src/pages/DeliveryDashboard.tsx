@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bike, Package, Clock, History, RefreshCw, LogOut, MapPin as MapPinIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -19,8 +20,15 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 ];
 
 const DeliveryDashboard = () => {
-  const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<Tab>("available");
+  const { user, setUser } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as Tab;
+  const isValidTab = tabs.some(t => t.id === urlTab);
+  const activeTab = isValidTab ? urlTab : "available";
+
+  const setActiveTab = (tabId: Tab) => {
+    setSearchParams({ tab: tabId }, { replace: true });
+  };
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
@@ -51,6 +59,22 @@ const DeliveryDashboard = () => {
       setLoading(false);
     }
   }, []);
+
+  const handleToggleAvailability = async () => {
+    if (!user) return;
+    try {
+      setProcessing('availability');
+      const newAvailability = !user.availability;
+      await api.updateDeliveryStatus(newAvailability);
+      // Optimistically update the auth store without extra fetch
+      setUser({ ...user, availability: newAvailability });
+      toast.success('Availability updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update availability');
+    } finally {
+      setProcessing(null);
+    }
+  };
 
   // Initial Data & Socket setup
   useEffect(() => {
@@ -209,6 +233,16 @@ const DeliveryDashboard = () => {
           >
             <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
           </button>
+                    {user?.roles?.includes("delivery") && user?.status !== "rejected" && user?.status !== "suspended" && (
+            <button
+              onClick={handleToggleAvailability}
+              disabled={processing === 'availability'}
+              className={`p-3 rounded-2xl shadow-sm transition-all active:scale-95 border border-gray-100 ${processing === 'availability' ? 'opacity-50 cursor-not-allowed' : ''} ${user?.availability ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-800' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800'}`}
+              title={user?.availability ? 'Go Offline' : 'Go Online'}
+            >
+              {user?.availability ? 'Online' : 'Offline'}
+            </button>
+          )}
         </div>
 
         {/* Live Tracking Indicator */}

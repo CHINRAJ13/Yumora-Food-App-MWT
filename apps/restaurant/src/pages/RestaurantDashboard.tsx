@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, Clock, UtensilsCrossed, BarChart3, RefreshCw, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -24,7 +25,14 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 
 const RestaurantDashboard = () => {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<Tab>("orders");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as Tab;
+  const isValidTab = tabs.some(t => t.id === urlTab);
+  const activeTab = isValidTab ? urlTab : "orders";
+  
+  const setActiveTab = (tabId: Tab) => {
+    setSearchParams({ tab: tabId }, { replace: true });
+  };
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);

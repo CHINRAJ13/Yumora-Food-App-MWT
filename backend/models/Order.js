@@ -57,6 +57,16 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  restaurantReview: {
+    rating: { type: Number, min: 1, max: 5 },
+    review: String,
+    createdAt: Date
+  },
+  deliveryReview: {
+    rating: { type: Number, min: 1, max: 5 },
+    review: String,
+    createdAt: Date
+  },
   location: {
     lat: Number,
     lng: Number

@@ -7,17 +7,16 @@ interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'user' | 'admin' | 'delivery' | 'restaurant';
+  roles: ('user' | 'admin' | 'delivery' | 'restaurant')[];
 }
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
   
-  setAuth: (user: User, token: string) => void;
+  setAuth: (user: User) => void;
   setUser: (user: User) => void;
   login: (credentials: any) => Promise<void>;
   register: (data: any) => Promise<void>;
@@ -29,12 +28,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       loading: false,
       error: null,
 
-      setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      setAuth: (user) => set({ user, isAuthenticated: true }),
       setUser: (user) => set({ user }),
 
       login: async (credentials) => {
@@ -43,7 +41,6 @@ export const useAuthStore = create<AuthState>()(
           const response: any = await api.loginUser(credentials);
           set({ 
             user: response.data.user, 
-            token: response.token, 
             isAuthenticated: true, 
             loading: false 
           });
@@ -62,7 +59,6 @@ export const useAuthStore = create<AuthState>()(
           if (response.token) {
             set({ 
               user: response.data.user, 
-              token: response.token, 
               isAuthenticated: true, 
               loading: false 
             });
@@ -80,7 +76,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           await api.logoutUser();
         } finally {
-          set({ user: null, token: null, isAuthenticated: false });
+          set({ user: null, isAuthenticated: false });
         }
       },
 
@@ -89,7 +85,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'yumora-auth',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )
 );

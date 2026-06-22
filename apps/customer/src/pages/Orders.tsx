@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCartStore } from "@/store/useCartStore";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Footer from "@/components/Footer";
 import * as api from "@/api";
 import { toast } from "sonner";
+import { ReviewModal } from "@/components/ReviewModal";
+import { Star } from "lucide-react";
 
 const Orders = () => {
   const { addItem, clearCart } = useCartStore();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "past" ? "past" : "active";
   
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [reviewOrder, setReviewOrder] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchOrders = useCallback(async (showLoading = true) => {
@@ -74,7 +79,7 @@ const Orders = () => {
            </button>
         </header>
 
-        <Tabs defaultValue="active" className="w-full">
+        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-white/50 p-1 rounded-2xl h-14 mb-8 backdrop-blur-md border border-white/20 shadow-sm">
             <TabsTrigger value="active" className="rounded-xl font-bold text-base data-[state=active]:bg-white data-[state=active]:shadow-sm">
               Active ({activeOrders.length})
@@ -115,6 +120,7 @@ const Orders = () => {
                   isPast 
                   onView={() => setSelectedOrder(order)}
                   onReorder={() => handleReorder(order)}
+                  onReview={() => setReviewOrder(order)}
                 />
               ))
             ) : (
@@ -184,12 +190,23 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Review Modal */}
+      {reviewOrder && (
+        <ReviewModal 
+          order={reviewOrder} 
+          onClose={() => setReviewOrder(null)} 
+          onSuccess={() => {
+            fetchOrders(false);
+          }} 
+        />
+      )}
+
       <Footer/>
     </div>
   );
 };
 
-const OrderCard = ({ order, index, isPast = false, onView, onReorder }: any) => {
+const OrderCard = ({ order, index, isPast = false, onView, onReorder, onReview }: any) => {
   const navigate = useNavigate();
   
   return (
@@ -239,15 +256,26 @@ const OrderCard = ({ order, index, isPast = false, onView, onReorder }: any) => 
                   Track
                 </Button>
               ) : (
-                <Button 
-                  onClick={onReorder}
-                  variant="outline" 
-                  className="border-gray-200 text-gray-600 font-bold h-9 rounded-xl"
-                  size="sm"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reorder
-                </Button>
+                <>
+                  <Button 
+                    onClick={onReorder}
+                    variant="outline" 
+                    className="border-gray-200 text-gray-600 font-bold h-9 rounded-xl"
+                    size="sm"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reorder
+                  </Button>
+                  {order.status === "Delivered" && (
+                    <Button 
+                      onClick={onReview}
+                      className="bg-orange-50 text-orange-600 hover:bg-orange-100 font-bold h-9 px-3 rounded-xl border border-orange-200"
+                    >
+                      <Star className={`w-4 h-4 mr-1.5 ${order.restaurantReview?.rating ? "fill-orange-500 text-orange-500" : ""}`} />
+                      {order.restaurantReview?.rating ? "View Rating" : "Rate"}
+                    </Button>
+                  )}
+                </>
               )}
               <Button 
                 onClick={onView}

@@ -109,3 +109,32 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, 200, 'Order status updated successfully', order);
 });
+
+/**
+ * @desc    Add review for an order
+ * @route   POST /api/orders/:id/review
+ * @access  Private
+ */
+export const addOrderReview = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return next(new AppError('User authentication required', 401));
+  }
+
+  const { restaurantRating, restaurantReviewText, deliveryRating, deliveryReviewText } = req.body;
+
+  if (!restaurantRating && !deliveryRating) {
+    return next(new AppError('Must provide at least one rating', 400));
+  }
+
+  const order = await orderService.addOrderReviewService(id, userId, {
+    restaurantRating,
+    restaurantReviewText,
+    deliveryRating,
+    deliveryReviewText
+  });
+
+  sendResponse(res, 200, 'Review submitted successfully', order);
+});

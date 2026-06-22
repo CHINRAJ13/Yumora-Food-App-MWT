@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Restaurant from '../models/Restaurant.js';
+import DeliveryProfile from '../models/DeliveryProfile.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { createSendToken } from '../utils/jwt.js';
@@ -27,27 +28,33 @@ export const register = asyncHandler(async (req, res, next) => {
   const finalRole = (role && allowedPublicRoles.includes(role)) ? role : 'user';
 
   // Set initial status based on role
-  const initialStatus = finalRole === 'restaurant' ? 'pending' : 'active';
+  const initialStatus = (finalRole === 'restaurant' || finalRole === 'delivery') ? 'pending' : 'active';
 
-  // Prepare role-specific details
-  const deliveryDetails = finalRole === 'delivery' ? {
-    vehicleNumber,
-    licenseNumber,
-    vehicleType: vehicleType || 'Bike'
-  } : undefined;
+
 
   const newUser = await User.create({
     name,
     email,
     password,
     phone,
-    role: finalRole,
+    roles: [finalRole],
     status: initialStatus,
-    deliveryDetails,
-    restaurantStatus: finalRole === 'restaurant' ? 'pending' : undefined
+    // Remove role-specific status fields from User model
+    // Delivery and restaurant statuses will be stored in their own profile collections
   });
 
-  // If Restaurant owner, create the restaurant profile (inactive until approved)
+  // If Delivery rider, create a DeliveryProfile document (inactive until approved)
+  if (finalRole === 'delivery') {
+    await DeliveryProfile.create({
+      userId: newUser._id,
+      status: 'pending',
+      vehicleNumber,
+      licenseNumber,
+      vehicleType: vehicleType || 'Bike'
+    });
+  }
+
+  // If Restaurant owner, create the Restaurant document (inactive until approved)
   if (finalRole === 'restaurant') {
     const restaurantId = `rest_${Date.now()}`;
     await Restaurant.create({
@@ -55,32 +62,27 @@ export const register = asyncHandler(async (req, res, next) => {
       name: restaurantName || `${name}'s Restaurant`,
       ownerId: newUser._id,
       cuisines: cuisines ? cuisines.split(',').map(c => c.trim()) : ['Multicuisine'],
-      image: req.file ? req.file.path : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000",
-      deliveryTime: "30-40 min",
+      image: req.file ? req.file.path : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000',
+      deliveryTime: '30-40 min',
       isVeg: false,
       rating: 0,
-      isActive: false // Hidden until admin approval
+      isActive: false, // Hidden until admin approval
+      approvalStatus: 'pending'
     });
-
-    newUser.restaurantId = restaurantId;
-    await newUser.save({ validateBeforeSave: false });
   }
 
-  // If user is pending (restaurant), respond with pending message
+  // If user is pending (restaurant or delivery), respond with pending message
   if (newUser.status === 'pending') {
     return res.status(201).json({
       status: 'success',
-      message: 'Registration successful! Your restaurant account is pending admin approval.',
+      message: 'Registration successful! Your account is pending admin approval.',
       data: {
         user: {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role,
-          status: newUser.status,
-          restaurantId: newUser.restaurantId,
-          restaurantStatus: newUser.restaurantStatus,
-          deliveryDetails: newUser.deliveryDetails
+          roles: newUser.roles,
+          status: newUser.status
         }
       }
     });
@@ -118,9 +120,20 @@ export const login = asyncHandler(async (req, res, next) => {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
   }
 
-  // Additional check for restaurant status
-  if (user.role === 'restaurant' && user.restaurantStatus === 'rejected') {
-    return next(new AppError('Your restaurant application was rejected. Contact admin for details.', 403));
+  // Additional check for restaurant profile status
+  if (user.roles.includes('restaurant')) {
+    const restaurant = await Restaurant.findOne({ ownerId: user._id });
+    if (restaurant && restaurant.approvalStatus === 'rejected') {
+      return next(new AppError('Your restaurant application was rejected. Contact admin for details.', 403));
+    }
+  }
+
+  // Additional check for delivery profile status
+  if (user.roles.includes('delivery')) {
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: user._id });
+    if (deliveryProfile && deliveryProfile.status === 'rejected') {
+      return next(new AppError('Your delivery application was rejected. Contact admin for details.', 403));
+    }
   }
 
   // 4) If everything ok, send token to client
@@ -228,8 +241,10 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // 3) Send it via Email and SMS
-  // Construct reset URL (use process.env.FRONTEND_URL in production)
-  const resetURL = `${req.protocol}://${req.get('host').replace('5000', '8080')}/reset-password/${resetToken}`;
+  // Construct reset URL using Origin header (the frontend app that initiated the request)
+  // Fallback to host if Origin is not available (e.g. from Postman)
+  const origin = req.headers.origin || `${req.protocol}://${req.get('host').replace('5000', '8080')}`;
+  const resetURL = `${origin}/reset-password/${resetToken}`;
 
   const message = `Forgot your password? Submit a PATCH request with your new password to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
 
@@ -281,5 +296,27 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
   await user.save();
 
   // 3) Log the user in, send JWT
+  createSendToken(user, 200, res);
+});
+
+/**
+ * @desc    Update Password
+ * @route   PATCH /api/users/updateMyPassword
+ * @access  Private
+ */
+export const updatePassword = asyncHandler(async (req, res, next) => {
+  // 1) Get user from collection
+  const user = await User.findById(req.user._id).select('+password');
+
+  // 2) Check if POSTed current password is correct
+  if (!(await user.correctPassword(req.body.currentPassword, user.password))) {
+    return next(new AppError('Your current password is wrong.', 401));
+  }
+
+  // 3) If correct, update password
+  user.password = req.body.password;
+  await user.save();
+
+  // 4) Log user in, send JWT
   createSendToken(user, 200, res);
 });

@@ -49,6 +49,8 @@ export const forgotPassword = (data: { email?: string; phone?: string }) => api.
 export const resetPassword = (token: string, data: any) => api.patch(`/auth/reset-password/${token}`, data);
 
 export const placeOrder = (orderData: any) => api.post('/orders', orderData);
+export const createOrder = (data: any) => api.post("/orders", data);
+export const addOrderReview = (orderId: string, data: any) => api.post(`/orders/${orderId}/review`, data);
 export const getMyOrders = () => api.get('/orders/my-orders');
 export const getOrderById = (id: string) => api.get(`/orders/single/${id}`);
 export const updateOrderStatus = (id: string, status: string) => api.patch(`/orders/update/${id}`, { status });
@@ -64,7 +66,7 @@ export const updateAdminRestaurant = (id: string, data: any) => api.put(`/admin/
 export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaurants/${id}`);
 
 export const getAdminUsers = () => api.get("/admin/users");
-export const updateAdminUserRole = (id: string, data: { role: string; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
+export const updateAdminUserRole = (id: string, data: { roles: string[]; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
 export const updateAdminUserStatus = (id: string, status: string) => api.patch(`/admin/users/${id}/status`, { status });
 
 export const getAdminCategories = () => api.get("/admin/categories");
@@ -107,7 +109,8 @@ export const updateRestaurantProfile = (formData: FormData) => api.patch("/resta
 
 // User Profile Methods
 export const getUserProfile = () => api.get("/users/me");
-export const updateUserProfile = (data: { name?: string; email?: string; phone?: string }) => api.patch("/users/updateMe", data);
+export const updateUserProfile = (data: { name?: string; phone?: string; deliveryDetails?: { vehicleNumber?: string; licenseNumber?: string; vehicleType?: string } }) => api.patch("/users/updateMe", data);
+export const updatePassword = (data: any) => api.patch("/users/updateMyPassword", data);
 
 // Location Methods
 export const reverseGeocodeAddress = (lat: number, lng: number) => api.post('/locations/address', { lat, lng });

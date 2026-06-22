@@ -6,7 +6,9 @@ import {
   getDeliveryStats,
   acceptOrder,
   pickupOrder,
-  completeOrder
+  completeOrder,
+  updateDeliveryStatus,
+  updateDeliveryRating
 } from '../controllers/deliveryController.js';
 import { protect, restrictTo } from '../middleware/auth.js';
 
@@ -36,5 +38,11 @@ router.patch('/pickup/:id', pickupOrder);
 
 // Complete delivery
 router.patch('/complete/:id', completeOrder);
+
+// Update delivery online/offline status (self)
+router.patch('/status', updateDeliveryStatus);
+
+// Update delivery user rating by customers
+router.patch('/:id/rating', updateDeliveryRating);
 
 export default router;

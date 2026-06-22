@@ -1,6 +1,7 @@
 import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
+import User from '../models/User.js';
 import {
   getAvailableOrdersService,
   getMyActiveDeliveriesService,
@@ -108,4 +109,31 @@ export const completeOrder = asyncHandler(async (req, res, next) => {
   } catch (err) {
     return next(new AppError(err.message, err.statusCode || 500));
   }
+});
+
+// Update delivery online/offline status (self)
+export const updateDeliveryStatus = asyncHandler(async (req, res, next) => {
+  const { availability } = req.body;
+  if (typeof availability !== 'boolean') {
+    return next(new AppError('Invalid availability value', 400));
+  }
+  const user = await User.findByIdAndUpdate(req.user._id, { availability }, { new: true });
+  if (!user) return next(new AppError('User not found', 404));
+  sendResponse(res, 200, 'Availability updated', { availability: user.availability });
+});
+
+// Update delivery user rating by customers
+export const updateDeliveryRating = asyncHandler(async (req, res, next) => {
+  const { rating } = req.body;
+  const { id } = req.params;
+  if (typeof rating !== 'number' || rating < 0 || rating > 5) {
+    return next(new AppError('Rating must be a number between 0 and 5', 400));
+  }
+  // Only customers (non-delivery) can rate
+  if (req.user.roles.includes('delivery')) {
+    return next(new AppError('Delivery users cannot rate other delivery users', 403));
+  }
+  const updatedUser = await User.findByIdAndUpdate(id, { rating }, { new: true });
+  if (!updatedUser) return next(new AppError('Delivery user not found', 404));
+  sendResponse(res, 200, 'Delivery rating updated', { rating: updatedUser.rating });
 });

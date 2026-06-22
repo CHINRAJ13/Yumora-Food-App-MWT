@@ -4,8 +4,10 @@ import { sendResponse } from '../utils/responseFormatter.js';
 import Order from '../models/Order.js';
 import Restaurant from '../models/Restaurant.js';
 import User from '../models/User.js';
+import DeliveryProfile from '../models/DeliveryProfile.js';
 import Category from '../models/Category.js';
 import Banner from '../models/Banner.js';
+import { sendEmail } from '../utils/email.js';
 import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted } from '../socket.js';
 
 /**
@@ -81,7 +83,7 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
   }
 
   const deliveryPerson = await User.findById(deliveryPersonId);
-  if (!deliveryPerson || deliveryPerson.role !== 'delivery') {
+  if (!deliveryPerson || !deliveryPerson.roles.includes('delivery')) {
     return next(new AppError('Invalid delivery person', 400));
   }
 
@@ -112,7 +114,7 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const getDeliveryPersons = asyncHandler(async (req, res, next) => {
-  const deliveryPersons = await User.find({ role: 'delivery' }).select('name email phone');
+  const deliveryPersons = await User.find({ roles: 'delivery' }).select('name email phone roles status');
   sendResponse(res, 200, 'Delivery persons retrieved', deliveryPersons);
 });
 
@@ -173,16 +175,47 @@ export const verifyRestaurant = asyncHandler(async (req, res, next) => {
 
 // --- Users ---
 export const getAllUsers = asyncHandler(async (req, res, next) => {
-  const users = await User.find();
+  const users = await User.aggregate([
+    {
+      $lookup: {
+        from: 'deliveryprofiles',
+        localField: '_id',
+        foreignField: 'userId',
+        as: 'deliveryDetails'
+      }
+    },
+    {
+      $unwind: {
+        path: '$deliveryDetails',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $lookup: {
+        from: 'restaurants',
+        localField: '_id',
+        foreignField: 'ownerId',
+        as: 'restaurantDetails'
+      }
+    },
+    {
+      $unwind: {
+        path: '$restaurantDetails',
+        preserveNullAndEmptyArrays: true
+      }
+    }
+  ]);
   sendResponse(res, 200, 'Users retrieved', users);
 });
 
 export const updateUserRole = asyncHandler(async (req, res, next) => {
-  const { role, restaurantId } = req.body;
-  const updateData = { role };
-  if (restaurantId !== undefined) updateData.restaurantId = restaurantId;
+  const { roles } = req.body;
+  
+  if (!roles || !Array.isArray(roles)) {
+    return next(new AppError('Please provide a valid roles array', 400));
+  }
 
-  const user = await User.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
+  const user = await User.findByIdAndUpdate(req.params.id, { roles }, { returnDocument: 'after' });
   if (!user) return next(new AppError('User not found', 404));
   sendResponse(res, 200, 'User updated successfully', user);
 });
@@ -209,46 +242,64 @@ export const updateUserStatus = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
 
-  // If the user is a restaurant owner, handle restaurantStatus and activation
-  if (user.role === 'restaurant') {
-    let restaurantStatusUpdate = {};
-    if (status === 'active') {
-      // Approve restaurant
-      restaurantStatusUpdate = { restaurantStatus: 'approved' };
-      await Restaurant.findOneAndUpdate({ id: user.restaurantId }, { isActive: true });
-    } else if (status === 'suspended') {
-      // Reject restaurant
-      restaurantStatusUpdate = { restaurantStatus: 'rejected', adminComment: comment || null };
+  // If the user has a restaurant role, update the Restaurant profile
+  if (user.roles.includes('restaurant')) {
+    const restaurant = await Restaurant.findOne({ ownerId: user._id });
+    if (restaurant) {
+      if (status === 'active') {
+        await Restaurant.findByIdAndUpdate(restaurant._id, {
+          approvalStatus: 'approved',
+          isActive: true
+        });
+      } else if (status === 'suspended') {
+        await Restaurant.findByIdAndUpdate(restaurant._id, {
+          approvalStatus: 'rejected',
+          adminComment: comment || null,
+          isActive: false
+        });
+      }
     }
-    await User.findByIdAndUpdate(user._id, restaurantStatusUpdate);
 
     // Send email notification
-    const emailSubject = status === 'active' ? 'Your restaurant has been approved' : 'Your restaurant application was rejected';
-    const emailText = status === 'active'
-      ? 'Congratulations! Your restaurant account is now approved and active.'
-      : `We regret to inform you that your restaurant application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
-    await sendEmail(user.email, emailSubject, emailText);
-  }
-
-  // If the user is a delivery boy, handle deliveryStatus
-  if (user.role === 'delivery') {
-    let deliveryStatusUpdate = {};
-    if (status === 'active') {
-      // Approve delivery boy
-      deliveryStatusUpdate = { deliveryStatus: 'approved' };
-    } else if (status === 'suspended') {
-      // Reject delivery boy
-      deliveryStatusUpdate = { deliveryStatus: 'rejected', adminComment: comment || null };
+    try {
+      const emailSubject = status === 'active' ? 'Your restaurant has been approved' : 'Your restaurant application was rejected';
+      const emailText = status === 'active'
+        ? 'Congratulations! Your restaurant account is now approved and active.'
+        : `We regret to inform you that your restaurant application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
+      await sendEmail(user.email, emailSubject, emailText);
+    } catch (err) {
+      console.log('Email notification failed:', err.message);
     }
-    await User.findByIdAndUpdate(user._id, deliveryStatusUpdate);
-
-    // Send email notification (reuse generic sendEmail)
-    const emailSubject = status === 'active' ? 'Your delivery account has been approved' : 'Your delivery application was rejected';
-    const emailText = status === 'active'
-      ? 'Congratulations! Your delivery account is now approved and active.'
-      : `We regret to inform you that your delivery application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
-    await sendEmail(user.email, emailSubject, emailText);
   }
+
+  // If the user has a delivery role, update the DeliveryProfile
+  if (user.roles.includes('delivery')) {
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: user._id });
+    if (deliveryProfile) {
+      if (status === 'active') {
+        await DeliveryProfile.findByIdAndUpdate(deliveryProfile._id, {
+          status: 'approved'
+        });
+      } else if (status === 'suspended') {
+        await DeliveryProfile.findByIdAndUpdate(deliveryProfile._id, {
+          status: 'rejected',
+          adminComment: comment || null
+        });
+      }
+    }
+
+    // Send email notification
+    try {
+      const emailSubject = status === 'active' ? 'Your delivery account has been approved' : 'Your delivery application was rejected';
+      const emailText = status === 'active'
+        ? 'Congratulations! Your delivery account is now approved and active.'
+        : `We regret to inform you that your delivery application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
+      await sendEmail(user.email, emailSubject, emailText);
+    } catch (err) {
+      console.log('Email notification failed:', err.message);
+    }
+  }
+
   sendResponse(res, 200, `User status updated to ${status}`, user);
 });
 

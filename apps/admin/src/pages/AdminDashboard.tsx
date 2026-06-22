@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminOrders from "@/components/admin/AdminOrders";
@@ -33,7 +34,15 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 ];
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as Tab;
+  const isValidTab = tabs.some(t => t.id === urlTab);
+  const activeTab = isValidTab ? urlTab : "overview";
+  
+  const setActiveTab = (tabId: Tab) => {
+    setSearchParams({ tab: tabId }, { replace: true });
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 

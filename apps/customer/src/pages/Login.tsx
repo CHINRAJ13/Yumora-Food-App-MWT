@@ -40,17 +40,8 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Role-based redirect after login
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else if (user.role === 'delivery') {
-        navigate('/delivery');
-      } else if (user.role === 'restaurant') {
-        navigate('/restaurant');
-      } else {
-        const returnUrl = location.state?.from || "/";
-        navigate(returnUrl);
-      }
+      const returnUrl = location.state?.from || "/";
+      navigate(returnUrl);
     }
   }, [isAuthenticated, user, navigate, location]);
 
@@ -142,7 +133,7 @@ const Login = () => {
     try {
       const res: any = await api.verifyOtp(phoneNumber, code);
       if (res.status === 'success') {
-        setAuth(res.data.user, res.token);
+        setAuth(res.data.user);
         toast({ title: "Authentication successful", description: `Welcome back!` });
       }
     } catch (err: any) {
@@ -302,23 +293,9 @@ const Login = () => {
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
-                        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Join As</Label>
-                        <select 
-                          value={role} 
-                          onChange={(e) => setRole(e.target.value)}
-                          className="w-full h-10 px-3 bg-white/50 border border-input rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
-                        >
-                          <option value="user">Customer</option>
-                          <option value="restaurant">Restaurant Owner</option>
-                          <option value="delivery">Delivery Rider</option>
-                        </select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Full Name</Label>
+                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your Name" required className="h-10 bg-white/50 rounded-xl" />
                     </div>
 
                     {role === 'restaurant' && (

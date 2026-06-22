@@ -22,11 +22,8 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   // Unify role checking: support both 'roles' array and 'requiredRole' string
   const allowedRoles = roles || (requiredRole ? [requiredRole] : null);
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on actual role
-    if (user.role === 'admin') return <Navigate to="/admin" replace />;
-    if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
-    if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
+  if (allowedRoles && user && !allowedRoles.some(r => user.roles?.includes(r as any))) {
+    // Role mismatch, redirect to home since other dashboards don't exist in this app
     return <Navigate to="/" replace />;
   }
 

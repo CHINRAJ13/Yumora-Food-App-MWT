@@ -79,7 +79,7 @@ const AdminUsers = () => {
 
   const handleRoleChange = async (userId: string, newRole: string, restaurantId?: string) => {
     try {
-      await api.updateAdminUserRole(userId, { role: newRole, restaurantId });
+      await api.updateAdminUserRole(userId, { roles: [newRole], restaurantId });
       toast.success(`User updated successfully`);
       fetchUsers();
     } catch {
@@ -89,7 +89,7 @@ const AdminUsers = () => {
 
   const filtered = users.filter(
     (u) =>
-      u.role === activeTab &&
+      u.roles?.includes(activeTab) &&
       (u.name?.toLowerCase().includes(search.toLowerCase()) ||
        u.email?.toLowerCase().includes(search.toLowerCase()))
   );
@@ -120,7 +120,7 @@ const AdminUsers = () => {
       <div className="flex items-center gap-2 p-1 bg-gray-100/50 rounded-2xl w-fit border border-gray-200/50">
         {roleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
-          const count = users.filter(u => u.role === tab.id).length;
+          const count = users.filter(u => u.roles?.includes(tab.id)).length;
           return (
             <button
               key={tab.id}
@@ -259,7 +259,7 @@ const AdminUsers = () => {
                       <td className="px-8 py-5">
                         <div className="flex flex-col gap-2">
                           <select
-                            value={user.role}
+                            value={user.roles?.[0] || 'user'}
                             onChange={(e) =>
                               handleRoleChange(user._id, e.target.value, user.restaurantId)
                             }

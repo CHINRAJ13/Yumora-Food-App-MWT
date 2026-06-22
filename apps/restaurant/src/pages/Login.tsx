@@ -38,14 +38,16 @@ const Login = () => {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [vehicleType, setVehicleType] = useState("Bike");
 
-  if (isAuthenticated && user) {
-    if (user.role === 'restaurant') {
-      navigate('/');
-    } else {
-      setError("Access denied. Restaurant account required.");
-      logout();
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.roles?.includes('restaurant')) {
+        navigate('/');
+      } else {
+        setError("Access denied. Restaurant account required.");
+        logout();
+      }
     }
-  }
+  }, [isAuthenticated, user, navigate, logout]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +137,7 @@ const Login = () => {
     try {
       const res: any = await api.verifyOtp(phoneNumber, code);
       if (res.status === 'success') {
-        setAuth(res.data.user, res.token);
+        setAuth(res.data.user);
         toast({ title: "Authentication successful", description: `Welcome back!` });
       }
     } catch (err: any) {

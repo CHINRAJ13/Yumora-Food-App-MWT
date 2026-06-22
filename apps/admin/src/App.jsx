@@ -11,6 +11,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -26,9 +29,19 @@ const App = () => (
           <Toaster />
           <Sonner />
           <HotToaster position="top-center" />
-          <HashRouter>
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/" 
                 element={

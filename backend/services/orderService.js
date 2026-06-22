@@ -1,10 +1,40 @@
 import Order from '../models/Order.js';
+import Restaurant from '../models/Restaurant.js';
+import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
 import { sendEmail } from '../utils/email.js';
 import { sendSMS } from '../utils/sms.js';
 
 export const createOrderService = async (orderData) => {
   const order = new Order(orderData);
   await order.save();
+
+  // Assign nearest online delivery rider based on restaurant location
+  try {
+    const restaurant = await Restaurant.findOne({ id: order.restaurantId });
+    if (restaurant?.location?.coordinates?.length === 2) {
+      const nearestDelivery = await User.findOne({
+        roles: 'delivery',
+        deliveryStatus: 'online',
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: restaurant.location.coordinates
+            },
+            $maxDistance: 5000 // 5km radius
+          }
+        }
+      });
+      if (nearestDelivery) {
+        order.deliveryPersonId = nearestDelivery._id;
+        order.deliveryPersonName = nearestDelivery.name || nearestDelivery.email;
+        await order.save();
+      }
+    }
+  } catch (err) {
+    console.error('Error assigning delivery rider:', err);
+  }
 
   // Notifications (Async)
   const deliverTime = "35-45 mins";
@@ -47,6 +77,70 @@ export const updateOrderStatusService = async (id, status) => {
       order.phone,
       `📦 Update: Your order is now ${status}`
     ).catch(err => console.error("SMS failed:", err.message));
+  }
+
+  return order;
+};
+
+export const addOrderReviewService = async (id, userId, { restaurantRating, restaurantReviewText, deliveryRating, deliveryReviewText }) => {
+  const order = await Order.findOne({ _id: id, userId });
+  
+  if (!order) {
+    throw new AppError('Order not found or unauthorized', 404);
+  }
+  
+  if (order.status !== 'Delivered') {
+    throw new AppError('Only delivered orders can be reviewed', 400);
+  }
+
+  let isUpdated = false;
+
+  // Restaurant Review
+  if (restaurantRating && (!order.restaurantReview || !order.restaurantReview.rating)) {
+    order.restaurantReview = {
+      rating: restaurantRating,
+      review: restaurantReviewText || "",
+      createdAt: new Date()
+    };
+    
+    // Update Restaurant average rating
+    const restaurant = await Restaurant.findOne({ id: order.restaurantId });
+    if (restaurant) {
+      const currentAvg = restaurant.rating || 0;
+      const currentTotal = restaurant.totalRatings || 0;
+      restaurant.rating = ((currentAvg * currentTotal) + restaurantRating) / (currentTotal + 1);
+      restaurant.totalRatings = currentTotal + 1;
+      await restaurant.save();
+    }
+    isUpdated = true;
+  }
+
+  // Delivery Review
+  if (deliveryRating && (!order.deliveryReview || !order.deliveryReview.rating) && order.deliveryPersonId) {
+    order.deliveryReview = {
+      rating: deliveryRating,
+      review: deliveryReviewText || "",
+      createdAt: new Date()
+    };
+    
+    // Update Delivery Person average rating in DeliveryProfile
+    const DeliveryProfile = (await import('../models/DeliveryProfile.js')).default;
+    const deliveryProfile = await DeliveryProfile.findOne({ userId: order.deliveryPersonId });
+    if (deliveryProfile) {
+      const currentAvg = deliveryProfile.rating || 0;
+      const currentTotal = deliveryProfile.totalRatings || 0;
+      
+      deliveryProfile.rating = ((currentAvg * currentTotal) + deliveryRating) / (currentTotal + 1);
+      deliveryProfile.totalRatings = currentTotal + 1;
+      await deliveryProfile.save();
+    }
+    isUpdated = true;
+  }
+
+  if (isUpdated) {
+    await order.save();
+  } else {
+    throw new AppError('Review already submitted or invalid payload', 400);
   }
 
   return order;

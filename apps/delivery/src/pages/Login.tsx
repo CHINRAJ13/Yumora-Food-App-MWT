@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import * as api from "@/api";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { motion } from "framer-motion";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "otp";
   const { login, register, setAuth, logout, isAuthenticated, user } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -38,14 +40,16 @@ const Login = () => {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [vehicleType, setVehicleType] = useState("Bike");
 
-  if (isAuthenticated && user) {
-    if (user.role === 'delivery') {
-      navigate('/');
-    } else {
-      setError("Access denied. Delivery account required.");
-      logout();
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.roles?.includes('delivery')) {
+        navigate('/');
+      } else {
+        setError("Access denied. Delivery account required.");
+        logout();
+      }
     }
-  }
+  }, [isAuthenticated, user, navigate, logout]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +139,7 @@ const Login = () => {
     try {
       const res: any = await api.verifyOtp(phoneNumber, code);
       if (res.status === 'success') {
-        setAuth(res.data.user, res.token);
+        setAuth(res.data.user);
         toast({ title: "Authentication successful", description: `Welcome back!` });
       }
     } catch (err: any) {
@@ -180,7 +184,7 @@ const Login = () => {
             )}
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="otp" className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value })} className="w-full">
               <TabsList className="grid w-full grid-cols-3 bg-gray-100/50 p-1 rounded-2xl h-12">
                 <TabsTrigger value="otp" className="rounded-xl font-bold">Phone</TabsTrigger>
                 <TabsTrigger value="login" className="rounded-xl font-bold">Email</TabsTrigger>

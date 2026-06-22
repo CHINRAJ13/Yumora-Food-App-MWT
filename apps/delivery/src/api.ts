@@ -8,24 +8,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to attach JWT token
-api.interceptors.request.use(
-  (config) => {
-    const authStorage = localStorage.getItem('yumora-auth');
-    if (authStorage) {
-      try {
-        const { state } = JSON.parse(authStorage);
-        if (state.token) {
-          config.headers.Authorization = `Bearer ${state.token}`;
-        }
-      } catch (e) {
-        console.error('Error parsing auth storage', e);
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+
 
 // Response interceptor to handle standardized backend responses
 api.interceptors.response.use(
@@ -83,7 +66,7 @@ export const updateAdminRestaurant = (id: string, data: any) => api.put(`/admin/
 export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaurants/${id}`);
 
 export const getAdminUsers = () => api.get("/admin/users");
-export const updateAdminUserRole = (id: string, data: { role: string; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
+export const updateAdminUserRole = (id: string, data: { roles: string[]; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
 export const updateAdminUserStatus = (id: string, status: string) => api.patch(`/admin/users/${id}/status`, { status });
 
 export const getAdminCategories = () => api.get("/admin/categories");
@@ -102,6 +85,18 @@ export const getDeliveryStats = () => api.get("/delivery/stats");
 export const acceptDeliveryOrder = (id: string) => api.patch(`/delivery/accept/${id}`);
 export const pickupDeliveryOrder = (id: string) => api.patch(`/delivery/pickup/${id}`);
 export const completeDeliveryOrder = (id: string) => api.patch(`/delivery/complete/${id}`);
+
+// Admin - Delivery assignment
+
+// New: Update delivery online/offline status
+export const updateDeliveryStatus = (availability: boolean) => {
+  return api.patch(`/delivery/status`, { availability });
+};
+
+// New: Update delivery user rating by customers
+export const updateDeliveryRating = (deliveryUserId: string, rating: number) => {
+  return api.patch(`/delivery/${deliveryUserId}/rating`, { rating });
+};
 
 // Admin - Delivery assignment
 export const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) =>
@@ -126,4 +121,5 @@ export const updateRestaurantProfile = (formData: FormData) => api.patch("/resta
 
 // User Profile Methods
 export const getUserProfile = () => api.get("/users/me");
-export const updateUserProfile = (data: { name?: string; email?: string; phone?: string }) => api.patch("/users/updateMe", data);
+export const updateUserProfile = (data: { name?: string; phone?: string; deliveryDetails?: { vehicleNumber?: string; licenseNumber?: string; vehicleType?: string } }) => api.patch("/users/updateMe", data);
+export const updatePassword = (data: any) => api.patch("/users/updateMyPassword", data);

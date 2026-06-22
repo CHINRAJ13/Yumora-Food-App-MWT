@@ -9,8 +9,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Pages
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
+import DeliveryApprovalStatus from "./pages/DeliveryApprovalStatus";
+import Profile from "./pages/Profile";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -26,9 +30,20 @@ const App = () => (
           <Toaster />
           <Sonner />
           <HotToaster position="top-center" />
-          <HashRouter>
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+              <Route path="/approval-status" element={<DeliveryApprovalStatus />} />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute roles={["delivery"]}>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/" 
                 element={
