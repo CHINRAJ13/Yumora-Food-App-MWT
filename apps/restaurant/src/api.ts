@@ -42,7 +42,14 @@ export const getRestaurantById = (id: string) => api.get(`/restaurants/${id}`);
 export const getCategories = () => api.get("/categories");
 export const getBanners = () => api.get("/banners");
 
-export const registerUser = (data: any) => api.post('/auth/register', data);
+export const registerUser = (data: any) => {
+  if (data instanceof FormData) {
+    return api.post('/auth/register', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
+  return api.post('/auth/register', data);
+};
 export const loginUser = (data: any) => api.post('/auth/login', data);
 export const logoutUser = () => api.get('/auth/logout');
 export const sendOtp = (phone: string) => api.post('/auth/send-otp', { phone });

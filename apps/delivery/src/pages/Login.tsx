@@ -39,6 +39,9 @@ const Login = () => {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [vehicleType, setVehicleType] = useState("Bike");
+  const [aadharNumber, setAadharNumber] = useState("");
+  const [aadharImage, setAadharImage] = useState<File | null>(null);
+  const [licenseImage, setLicenseImage] = useState<File | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -85,18 +88,21 @@ const Login = () => {
         restaurantName: role === 'restaurant' ? restaurantName : undefined,
         vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
         licenseNumber: role === 'delivery' ? licenseNumber : undefined,
-        vehicleType: role === 'delivery' ? vehicleType : undefined
+        vehicleType: role === 'delivery' ? vehicleType : undefined,
+        aadharNumber: aadharNumber
       };
 
       let finalData;
-      if (role === 'restaurant' && restaurantImage) {
+      if (role === 'restaurant' || role === 'delivery') {
         const formData = new FormData();
         Object.keys(signupData).forEach(key => {
           if (signupData[key] !== undefined) {
             formData.append(key, signupData[key]);
           }
         });
-        formData.append('image', restaurantImage);
+        if (restaurantImage) formData.append('image', restaurantImage);
+        if (aadharImage) formData.append('aadharImage', aadharImage);
+        if (licenseImage) formData.append('licenseImage', licenseImage);
         finalData = formData;
       } else {
         finalData = signupData;
@@ -325,6 +331,27 @@ const Login = () => {
                           required
                           className="h-10 bg-blue-50/50 border-blue-200 rounded-xl text-xs"
                         />
+                      </div>
+                    </motion.div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Aadhar Number</Label>
+                      <Input value={aadharNumber} onChange={(e) => setAadharNumber(e.target.value)} placeholder="12 Digit Aadhar Number" required maxLength={12} minLength={12} className="h-10 bg-white/50 rounded-xl" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Phone Number</Label>
+                      <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone Number" required className="h-10 bg-white/50 rounded-xl" />
+                    </div>
+
+                    <motion.div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Aadhar Image</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => setAadharImage(e.target.files?.[0] || null)} required className="text-xs" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">License Image</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => setLicenseImage(e.target.files?.[0] || null)} required className="text-xs" />
                       </div>
                     </motion.div>
 

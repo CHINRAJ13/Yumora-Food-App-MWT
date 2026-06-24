@@ -37,6 +37,8 @@ const Login = () => {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [vehicleType, setVehicleType] = useState("Bike");
+  const [aadharNumber, setAadharNumber] = useState("");
+  const [aadharImage, setAadharImage] = useState<File | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -83,18 +85,20 @@ const Login = () => {
         restaurantName: role === 'restaurant' ? restaurantName : undefined,
         vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
         licenseNumber: role === 'delivery' ? licenseNumber : undefined,
-        vehicleType: role === 'delivery' ? vehicleType : undefined
+        vehicleType: role === 'delivery' ? vehicleType : undefined,
+        aadharNumber: aadharNumber
       };
 
       let finalData;
-      if (role === 'restaurant' && restaurantImage) {
+      if (role === 'restaurant') {
         const formData = new FormData();
         Object.keys(signupData).forEach(key => {
           if (signupData[key] !== undefined) {
             formData.append(key, signupData[key]);
           }
         });
-        formData.append('image', restaurantImage);
+        if (restaurantImage) formData.append('image', restaurantImage);
+        if (aadharImage) formData.append('aadharImage', aadharImage);
         finalData = formData;
       } else {
         finalData = signupData;
@@ -338,6 +342,21 @@ const Login = () => {
                         </div>
                       </div>
                     </motion.div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Aadhar Number</Label>
+                      <Input value={aadharNumber} onChange={(e) => setAadharNumber(e.target.value)} placeholder="12 Digit Aadhar Number" required maxLength={12} minLength={12} className="h-10 bg-white/50 rounded-xl" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Phone Number</Label>
+                      <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone Number" required className="h-10 bg-white/50 rounded-xl" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Aadhar Image</Label>
+                      <Input type="file" accept="image/*" onChange={(e) => setAadharImage(e.target.files?.[0] || null)} required className="h-10 bg-white/50 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white" />
+                    </div>
 
 
                     <div className="space-y-2">

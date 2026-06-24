@@ -16,21 +16,41 @@ export const register = asyncHandler(async (req, res, next) => {
   let {
     name, email, password, phone, role,
     restaurantName, cuisines,
-    vehicleNumber, licenseNumber, vehicleType
+    vehicleNumber, licenseNumber, vehicleType,
+    aadharNumber
   } = req.body;
 
-  if (!phone || phone.trim() === "") {
-    phone = undefined;
-  }
+  // console.log(req.body)
 
   // Sanitize role: Only allow public roles, default to 'user'
   const allowedPublicRoles = ['user', 'delivery', 'restaurant'];
   const finalRole = (role && allowedPublicRoles.includes(role)) ? role : 'user';
 
+  if (finalRole === 'delivery' || finalRole === 'restaurant') {
+    if (!phone || phone.trim() === "") {
+      return next(new AppError(`Phone number is required to register as a ${finalRole}.`, 400));
+    }
+    if (!aadharNumber || !/^\d{12}$/.test(aadharNumber)) {
+      return next(new AppError('A valid 12-digit Aadhar number is required.', 400));
+    }
+  } else {
+    if (!phone || phone.trim() === "") {
+      phone = undefined;
+    }
+  }
+
   // Set initial status based on role
   const initialStatus = (finalRole === 'restaurant' || finalRole === 'delivery') ? 'pending' : 'active';
 
+  let imagePath = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000';
+  let aadharImagePath = null;
+  let licenseImagePath = null;
 
+  if (req.files) {
+    if (req.files.image && req.files.image[0]) imagePath = req.files.image[0].path;
+    if (req.files.aadharImage && req.files.aadharImage[0]) aadharImagePath = req.files.aadharImage[0].path;
+    if (req.files.licenseImage && req.files.licenseImage[0]) licenseImagePath = req.files.licenseImage[0].path;
+  }
 
   const newUser = await User.create({
     name,
@@ -39,35 +59,43 @@ export const register = asyncHandler(async (req, res, next) => {
     phone,
     roles: [finalRole],
     status: initialStatus,
-    // Remove role-specific status fields from User model
-    // Delivery and restaurant statuses will be stored in their own profile collections
   });
 
-  // If Delivery rider, create a DeliveryProfile document (inactive until approved)
+  // If Delivery rider, create a DeliveryProfile document
   if (finalRole === 'delivery') {
+    if (!aadharImagePath) return next(new AppError('Aadhar image is required', 400));
+    if (!licenseImagePath) return next(new AppError('License image is required', 400));
+
     await DeliveryProfile.create({
       userId: newUser._id,
       status: 'pending',
       vehicleNumber,
       licenseNumber,
-      vehicleType: vehicleType || 'Bike'
+      vehicleType: vehicleType || 'Bike',
+      aadharNumber,
+      aadharImage: aadharImagePath,
+      licenseImage: licenseImagePath
     });
   }
 
-  // If Restaurant owner, create the Restaurant document (inactive until approved)
+  // If Restaurant owner, create the Restaurant document
   if (finalRole === 'restaurant') {
+    if (!aadharImagePath) return next(new AppError('Aadhar image is required', 400));
+
     const restaurantId = `rest_${Date.now()}`;
     await Restaurant.create({
       id: restaurantId,
       name: restaurantName || `${name}'s Restaurant`,
       ownerId: newUser._id,
       cuisines: cuisines ? cuisines.split(',').map(c => c.trim()) : ['Multicuisine'],
-      image: req.file ? req.file.path : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000',
+      image: imagePath,
       deliveryTime: '30-40 min',
       isVeg: false,
       rating: 0,
       isActive: false, // Hidden until admin approval
-      approvalStatus: 'pending'
+      approvalStatus: 'pending',
+      aadharNumber,
+      aadharImage: aadharImagePath
     });
   }
 

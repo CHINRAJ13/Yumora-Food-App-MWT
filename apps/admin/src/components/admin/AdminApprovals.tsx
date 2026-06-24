@@ -13,10 +13,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ApprovalModal from "./ApprovalModal";
 
 const AdminApprovals = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPendingUsers();
@@ -37,14 +40,22 @@ const AdminApprovals = () => {
     }
   };
 
-  const handleStatusUpdate = async (userId: string, status: 'active' | 'suspended') => {
+  const handleStatusUpdate = async (userId: string, status: 'active' | 'suspended', comment?: string) => {
     try {
+      // Pass comment to API if your backend supports it, for now just status
       await api.updateAdminUserStatus(userId, status);
       toast.success(`User account ${status === 'active' ? 'approved' : 'rejected'}`);
+      setModalOpen(false);
+      setSelectedUser(null);
       fetchPendingUsers();
     } catch (err: any) {
       toast.error(err.message || "Failed to update status");
     }
+  };
+
+  const handleOpenModal = (user: any) => {
+    setSelectedUser(user);
+    setModalOpen(true);
   };
 
   if (loading) {
@@ -170,19 +181,10 @@ const AdminApprovals = () => {
 
                 <div className="mt-auto flex gap-3">
                   <Button 
-                    onClick={() => handleStatusUpdate(user._id, 'active')}
-                    className="flex-1 h-12 rounded-2xl bg-green-500 hover:bg-green-600 font-black text-xs uppercase tracking-widest gap-2 shadow-lg shadow-green-200 transition-all active:scale-95"
+                    onClick={() => handleOpenModal(user)}
+                    className="flex-1 h-12 rounded-2xl bg-gray-900 hover:bg-gray-800 font-black text-xs uppercase tracking-widest gap-2 text-white shadow-lg shadow-gray-200 transition-all active:scale-95"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleStatusUpdate(user._id, 'suspended')}
-                    className="flex-1 h-12 rounded-2xl border-gray-200 font-black text-xs uppercase tracking-widest gap-2 text-red-500 hover:bg-red-50 hover:border-red-100 transition-all active:scale-95"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Reject
+                    View Details
                   </Button>
                 </div>
               </div>
@@ -202,6 +204,16 @@ const AdminApprovals = () => {
           </div>
         )}
       </div>
+
+      {selectedUser && (
+        <ApprovalModal
+          isOpen={modalOpen}
+          user={selectedUser}
+          onClose={() => { setModalOpen(false); setSelectedUser(null); }}
+          onApprove={(id, comment) => handleStatusUpdate(id, 'active', comment)}
+          onReject={(id, comment) => handleStatusUpdate(id, 'suspended', comment)}
+        />
+      )}
     </div>
   );
 };

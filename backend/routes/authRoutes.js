@@ -22,7 +22,11 @@ import { uploadRestaurant } from '../middleware/upload.js';
 
 const router = express.Router();
 
-router.post('/register', uploadRestaurant.single('image'), validate(registerSchema), register);
+router.post('/register', uploadRestaurant.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'aadharImage', maxCount: 1 },
+  { name: 'licenseImage', maxCount: 1 }
+]), validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
 router.get('/logout', logout);
 router.post('/send-otp', validate(otpSchema), sendOTP);
