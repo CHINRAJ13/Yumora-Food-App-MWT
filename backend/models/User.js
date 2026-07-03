@@ -5,13 +5,12 @@ import crypto from 'crypto';
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Please tell us your name!'],
     trim: true
   },
   email: {
     type: String,
-    required: [true, 'Please provide your email'],
     unique: true,
+    sparse: true,
     lowercase: true,
   },
   phone: {
@@ -31,7 +30,6 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
     minlength: 8,
     select: false
   },
@@ -71,6 +69,15 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.index({ location: '2dsphere' });
+
+// Custom validation to ensure either email or phone is provided
+userSchema.pre('validate', function() {
+  if (!this.email && !this.phone) {
+    this.invalidate('email', 'You must provide either an email or a phone number');
+    this.invalidate('phone', 'You must provide either an email or a phone number');
+  }
+  // next();
+});
 
 // Hash password before saving
 userSchema.pre('save', async function() {

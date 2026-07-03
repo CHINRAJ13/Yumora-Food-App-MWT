@@ -199,9 +199,7 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
   if (!user) {
     user = await User.create({
       phone,
-      name: `User_${phone.slice(-4)}`,
-      email: `${phone}@yumora.com`, // Temporary email
-      password: crypto.randomBytes(8).toString('hex') // Random password
+      name: `User_${phone.slice(-4)}`
     });
   }
 
@@ -272,7 +270,7 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   // Construct reset URL using Origin header (the frontend app that initiated the request)
   // Fallback to host if Origin is not available (e.g. from Postman)
   const origin = req.headers.origin || `${req.protocol}://${req.get('host').replace('5000', '8080')}`;
-  const resetURL = `${origin}/reset-password/${resetToken}`;
+  const resetURL = `${origin}/#/reset-password/${resetToken}`;
 
   const message = `Forgot your password? Submit a PATCH request with your new password to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
 
