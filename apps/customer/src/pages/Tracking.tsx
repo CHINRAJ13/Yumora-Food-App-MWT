@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import * as api from "@/api";
-import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { ChefHat, Truck, CheckCircle2, Package, ArrowLeft, Timer, MapPin, RefreshCw, Bike, User, Navigation } from "lucide-react";
 import { socketService } from "@/services/socket";
@@ -66,8 +65,7 @@ const Tracking = () => {
   }, [orderId, fetchTrackingData]);
 
   return (
-    <div className="min-h-screen bg-secondary/30 pb-20 lg:pb-0">
-      <Navbar />
+    <div className="min-h-screen bg-secondary/30 pb-20 lg:pb-0 pt-6">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="flex items-center justify-between mb-8">
           <Link to="/orders" className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-shadow">
@@ -215,18 +213,7 @@ const EnhancedTrackingCard = ({ order }: { order: any }) => {
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Delivery Address</p>
             <p className="text-xs font-bold text-gray-700 mt-0.5 line-clamp-1">{order.address}</p>
           </div>
-          {order.location?.lat && (
-            <button
-              onClick={() => {
-                const url = `https://www.google.com/maps/search/?api=1&query=${order.location.lat},${order.location.lng}`;
-                window.open(url, "_blank");
-              }}
-              className="bg-primary/5 p-2 rounded-xl text-primary hover:bg-primary/10 transition-all"
-              title="View on Map"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-            </button>
-          )}
+
         </div>
       </div>
 

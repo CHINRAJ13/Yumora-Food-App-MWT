@@ -21,14 +21,19 @@ const Footer = () => {
                         <h4 className="font-bold text-foreground mb-3 text-sm">Quick Links</h4>
                         <div className="space-y-2 flex flex-col items-center md:items-start">
                             {[
-                                { to: "/", label: "Home" },
-                                { to: "/restaurants", label: "Restaurants" },
-                                { to: "/offers", label: "Offers" },
-                                { to: "/orders", label: "My Orders" },
+                                { to: "/", label: "Dashboard" },
+                                { to: "/profile", label: "Profile & Settings" },
+                                { to: "mailto:hello@yumora.com", label: "Help & Support" },
                             ].map((l) => (
-                                <Link key={l.to} to={l.to} className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                                    {l.label}
-                                </Link>
+                                l.to.startsWith('mailto:') ? (
+                                    <a key={l.to} href={l.to} className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                                        {l.label}
+                                    </a>
+                                ) : (
+                                    <Link key={l.to} to={l.to} className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                                        {l.label}
+                                    </Link>
+                                )
                             ))}
                         </div>
                     </div>

@@ -28,6 +28,8 @@ const emptyForm = {
   isVeg: false,
   priceForTwo: 300,
   distance: "2 km",
+  aadharNumber: "",
+  aadharImage: "",
 };
 
 const AdminRestaurants = () => {
@@ -71,6 +73,8 @@ const AdminRestaurants = () => {
       isVeg: r.isVeg,
       priceForTwo: r.priceForTwo,
       distance: r.distance || "",
+      aadharNumber: r.aadharNumber || "",
+      aadharImage: r.aadharImage || "",
     });
     setShowModal(true);
   };
@@ -85,6 +89,8 @@ const AdminRestaurants = () => {
         .filter(Boolean),
       rating: Number(form.rating),
       priceForTwo: Number(form.priceForTwo),
+      aadharNumber: form.aadharNumber || "N/A",
+      aadharImage: form.aadharImage || "N/A"
     };
 
     try {
@@ -331,6 +337,35 @@ const AdminRestaurants = () => {
                       value={form.distance}
                       onChange={(e) =>
                         setForm({ ...form, distance: e.target.value })
+                      }
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                      Aadhar Number
+                    </label>
+                    <input
+                      required
+                      value={form.aadharNumber}
+                      onChange={(e) =>
+                        setForm({ ...form, aadharNumber: e.target.value })
+                      }
+                      placeholder="XXXX-XXXX-XXXX"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                      Aadhar Image URL
+                    </label>
+                    <input
+                      required
+                      value={form.aadharImage}
+                      onChange={(e) =>
+                        setForm({ ...form, aadharImage: e.target.value })
                       }
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     />

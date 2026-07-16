@@ -87,8 +87,10 @@ export const getAddress = async (req, res) => {
 
     try {
         const response = await axios.get(url);
-        const address = response.data.features?.[0]?.properties?.label || 'Address not found';
-        res.json({ address });
+        const properties = response.data.features?.[0]?.properties || {};
+        const address = properties.label || 'Address not found';
+        const pincode = properties.postalcode || '';
+        res.json({ address, pincode });
     } catch (error) {
         console.error('Geocoding Error:', error.response?.data || error.message);
         res.status(500).json({

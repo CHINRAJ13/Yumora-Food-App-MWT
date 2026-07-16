@@ -64,11 +64,18 @@ const RestaurantOrderCard = ({ order, onUpdateStatus, isProcessing }: Restaurant
         </div>
 
         {/* Order ID & Amount */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-start justify-between mb-3">
           <span className="text-sm font-black text-gray-900">
             #{order._id.substring(order._id.length - 8)}
           </span>
-          <span className="text-lg font-black text-gray-900">₹{order.totalAmount}</span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-lg font-black text-gray-900 leading-none">₹{order.totalAmount}</span>
+            <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+              order.paymentMethod === 'cod' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+            }`}>
+              {order.paymentMethod === 'cod' ? 'COD' : 'PREPAID'}
+            </div>
+          </div>
         </div>
 
         {/* Items */}

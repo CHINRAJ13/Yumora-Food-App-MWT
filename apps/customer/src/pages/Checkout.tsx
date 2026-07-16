@@ -55,7 +55,10 @@ const Checkout = () => {
           const res: any = await api.reverseGeocodeAddress(latitude, longitude);
           if (res.address) {
             setValue("line1", res.address);
-            toast.success("Address auto-filled! 📍");
+            if (res.pincode) {
+              setValue("pincode", res.pincode);
+            }
+            toast.success("Address & Pincode auto-filled! 📍");
           } else {
             toast.success("Location captured! 📍");
           }
@@ -170,42 +173,50 @@ const Checkout = () => {
     }
 
     try {
-      const fullAddress = `${data.line1}${data.line2 ? `, ${data.line2}` : ""}, ${data.pincode}`;
-      const createRes: any = await api.placeOrder({
-        items,
-        totalAmount: grandTotal,
-        address: fullAddress,
-        phone: data.phone,
-        email: data.email,
-        paymentMethod: "online",
-        restaurantId: items[0]?.restaurantId || null,
-        restaurantName: items[0]?.restaurantName || null,
-        location: locationCoords
-      });
+      // 1. Get Razorpay Order ID from backend
+      const rzpOrderRes: any = await api.createPaymentOrder(grandTotal);
+      const rzpOrderId = rzpOrderRes.data.id;
 
-      saveAddressToLocal(data);
-
+      // 2. Configure and open Razorpay
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_xxxx",
         amount: grandTotal * 100,
         currency: "INR",
         name: "Yumora",
         description: "Food Delivery Payment",
+        order_id: rzpOrderId, // Important: pass the generated order ID
         handler: async (response: any) => {
           try {
-            await api.default.post("/payment/verify", {
+            // 3. Verify signature
+            await api.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
+
+            // 4. Place order in DB as Success
+            const fullAddress = `${data.line1}${data.line2 ? `, ${data.line2}` : ""}, ${data.pincode}`;
+            const createRes: any = await api.placeOrder({
+              items,
+              totalAmount: grandTotal,
+              address: fullAddress,
+              phone: data.phone,
+              email: data.email,
+              paymentMethod: "card",
+              paymentId: response.razorpay_payment_id,
+              paymentStatus: "Success",
+              restaurantId: items[0]?.restaurantId || null,
+              restaurantName: items[0]?.restaurantName || null,
+              location: locationCoords
+            });
+            
+            saveAddressToLocal(data);
             toast.success("Payment Successful 🎉");
-            setOrderId(createRes.data._id);
-            setOrderPlaced(true);
             clearCart();
             showSuccessToast(createRes.data._id);
-            setTimeout(() => navigate("/orders"), 2000);
+            navigate("/orders");
           } catch (err) {
-            toast.error("Payment verification failed");
+            toast.error("Payment verification or order placement failed");
           }
         },
         prefill: {
@@ -217,9 +228,12 @@ const Checkout = () => {
       };
 
       const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        toast.error(`Payment Failed: ${response.error.description}`);
+      });
       rzp.open();
     } catch (error: any) {
-      toast.error(`Order failed: ${error.message}`);
+      toast.error(`Order initiation failed: ${error.message}`);
     } finally {
       setProcessingPayment(false);
     }

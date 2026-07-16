@@ -25,6 +25,7 @@ const Footer = () => {
                                 { to: "/restaurants", label: "Restaurants" },
                                 { to: "/offers", label: "Offers" },
                                 { to: "/orders", label: "My Orders" },
+                                { to: "/profile", label: "Profile" },
                             ].map((l) => (
                                 <Link key={l.to} to={l.to} className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                                     {l.label}

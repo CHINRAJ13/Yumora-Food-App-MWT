@@ -8,8 +8,13 @@ import AppError from '../utils/AppError.js';
  * @desc    Protect routes - verify token in headers or cookies
  */
 export const protect = asyncHandler(async (req, res, next) => {
-  // 1) Getting token from cookies ONLY
-  const token = req.cookies?.jwt;
+  let token;
+  // 1) Getting token from headers OR cookies
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies?.jwt) {
+    token = req.cookies.jwt;
+  }
 
   if (!token) {
     return next(

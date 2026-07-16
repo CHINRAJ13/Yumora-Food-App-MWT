@@ -52,7 +52,7 @@ export const registerUser = (data: any) => {
 };
 export const loginUser = (data: any) => api.post('/auth/login', data);
 export const logoutUser = () => api.get('/auth/logout');
-export const sendOtp = (phone: string) => api.post('/auth/send-otp', { phone });
+export const sendOtp = (phone: string, role?: string) => api.post('/auth/send-otp', { phone, role });
 export const verifyOtp = (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp });
 export const forgotPassword = (data: { email?: string; phone?: string }) => api.post('/auth/forgot-password', data);
 export const resetPassword = (token: string, data: any) => api.patch(`/auth/reset-password/${token}`, data);

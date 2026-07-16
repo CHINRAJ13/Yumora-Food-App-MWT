@@ -78,15 +78,23 @@ export const updateMe = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 2) Explicitly block email changes (mandatory/identity field)
-  if (req.body.email) {
-    return next(
-      new AppError('Email is a mandatory field and cannot be changed.', 400)
-    );
+  // 2) Filter allowed general fields (name is always allowed)
+  const filteredBody = filterObj(req.body, 'name');
+
+  // 3) Conditionally allow email and phone updates ONLY if they are not already set
+  // Email logic
+  if (!req.user.email && req.body.email) {
+    filteredBody.email = req.body.email;
+  } else if (req.user.email && req.body.email && req.body.email !== req.user.email) {
+    return next(new AppError('Email is already set and cannot be changed.', 400));
   }
 
-  // 3) Filter allowed general fields (email removed — it's uneditable)
-  const filteredBody = filterObj(req.body, 'name', 'phone');
+  // Phone logic
+  if (!req.user.phone && req.body.phone) {
+    filteredBody.phone = req.body.phone;
+  } else if (req.user.phone && req.body.phone && req.body.phone !== req.user.phone) {
+    return next(new AppError('Phone number is already set and cannot be changed.', 400));
+  }
 
   // 4) Handle delivery-specific field updates with re-verification
   let requiresReverification = false;

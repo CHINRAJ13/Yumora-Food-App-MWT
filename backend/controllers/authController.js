@@ -187,7 +187,7 @@ export const logout = (req, res) => {
  * @route   POST /api/auth/send-otp
  */
 export const sendOTP = asyncHandler(async (req, res, next) => {
-  const { phone } = req.body;
+  const { phone, role } = req.body;
 
   if (!phone) {
     return next(new AppError('Phone number is required', 400));
@@ -197,10 +197,18 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
 
   let user = await User.findOne({ phone });
   if (!user) {
+    if (role === 'restaurant' || role === 'delivery') {
+      return next(new AppError(`Account not found. Please register as a ${role} with your documents first.`, 404));
+    }
     user = await User.create({
       phone,
       name: `User_${phone.slice(-4)}`
     });
+  } else {
+    // Optionally check if they have the correct role if requesting as partner
+    if (role && role !== 'user' && !user.roles.includes(role)) {
+      return next(new AppError(`Account exists but lacks the ${role} role. Please apply for a ${role} account.`, 403));
+    }
   }
 
   user.otp = otp;

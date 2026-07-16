@@ -28,12 +28,12 @@ const Navbar = () => {
   return (
     <>
       <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg shadow-xl border border-white/20">
-        <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between gap-4">
+        <div className="container mx-auto px-4 h-14 lg:h-16 flex items-center justify-between gap-4">
 
           {/* Mobile Hamburger */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden p-1.5 -ml-1 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-1.5 -ml-1 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -56,7 +56,7 @@ const Navbar = () => {
           </div>
 
           {/* Nav Links - Desktop Only */}
-          <div className="hidden md:flex items-center gap-1 mx-auto">
+          <div className="hidden lg:flex items-center gap-1 mx-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -83,7 +83,7 @@ const Navbar = () => {
             <div className="hidden sm:block"><ThemeToggle /></div>
 
             {isAuthenticated ? (
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <Link to="/profile" className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
                   <UserIcon className="w-3.5 h-3.5 text-orange-500" />
                   <span className="text-xs font-bold text-gray-700">{user?.name}</span>
@@ -99,7 +99,7 @@ const Navbar = () => {
             ) : (
               <Link
                 to="/login"
-                className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 transition-all hover:bg-gray-50"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 transition-all hover:bg-gray-50"
               >
                 <UserIcon className="w-4 h-4" />
                 <span>Login</span>
@@ -120,7 +120,7 @@ const Navbar = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden"
             />
 
             <motion.div
@@ -128,7 +128,7 @@ const Navbar = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="fixed top-0 bottom-0 left-0 w-[280px] bg-white shadow-2xl z-50 flex flex-col md:hidden"
+              className="fixed top-0 bottom-0 left-0 w-[280px] bg-white shadow-2xl z-50 flex flex-col lg:hidden"
             >
               <div className="p-5 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-2">

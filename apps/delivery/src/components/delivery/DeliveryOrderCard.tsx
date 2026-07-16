@@ -82,9 +82,16 @@ const DeliveryOrderCard = ({ order, type, onAccept, onPickup, onComplete, isProc
               {order.items?.map((i: any) => i.name).join(", ")}
             </p>
           </div>
-          <div className="flex items-center gap-0.5">
-            <IndianRupee className="w-3.5 h-3.5 text-gray-900" />
-            <span className="text-sm font-black text-gray-900">{order.totalAmount}</span>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-0.5">
+              <IndianRupee className="w-3.5 h-3.5 text-gray-900" />
+              <span className="text-sm font-black text-gray-900">{order.totalAmount}</span>
+            </div>
+            {order.paymentMethod === 'cod' ? (
+              <span className="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">COD</span>
+            ) : (
+              <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">PREPAID</span>
+            )}
           </div>
         </div>
 

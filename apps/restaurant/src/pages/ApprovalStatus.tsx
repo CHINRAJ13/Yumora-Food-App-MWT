@@ -27,7 +27,7 @@ const ApprovalStatus = () => {
       return;
     }
 
-    if (user.restaurantStatus === 'approved') {
+    if (user.status === 'active') {
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -42,14 +42,14 @@ const ApprovalStatus = () => {
   }
 
   // Prevent rendering while redirecting
-  if (!user || user.restaurantStatus === 'approved') {
+  if (!user || user.status === 'active') {
     return null;
   }
 
   const status: RestaurantStatus =
-    (user.restaurantStatus as RestaurantStatus) || 'pending';
+    (user.status as RestaurantStatus) || 'pending';
 
-  const comment = user.adminComment || '';
+  const comment = (user as any).restaurant?.adminComment || '';
 
   const renderStatus = () => {
     switch (status) {

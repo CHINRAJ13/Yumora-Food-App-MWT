@@ -10,7 +10,9 @@ import {
   LogOut,
   Loader2,
   Save,
-  ArrowLeft
+  ArrowLeft,
+  Lock,
+  Info
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -30,6 +32,7 @@ const Profile = () => {
     email: user?.email || "",
     phone: user?.phone || "",
   });
+  const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -37,9 +40,10 @@ const Profile = () => {
         const res: any = await api.getUserProfile();
         if (res.status === 'success') {
           setUser(res.data);
+          setProfileData(res.data);
           setForm({
             name: res.data.name,
-            email: res.data.email,
+            email: res.data.email || "",
             phone: res.data.phone || "",
           });
         }
@@ -57,9 +61,14 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res: any = await api.updateUserProfile(form);
+      const updateData: any = { name: form.name };
+      if (!profileData?.email && form.email) updateData.email = form.email;
+      if (!profileData?.phone && form.phone) updateData.phone = form.phone;
+
+      const res: any = await api.updateUserProfile(updateData);
       if (res.status === 'success') {
         setUser(res.data);
+        setProfileData(res.data);
         toast.success("Profile updated successfully!");
       }
     } catch (err: any) {
@@ -177,44 +186,64 @@ const Profile = () => {
                     </div>
                   </div>
 
+                  {/* Email — Conditionally Editable */}
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1 flex items-center gap-1.5">
                       Email Address
+                      {!!profileData?.email && (
+                        <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-bold normal-case tracking-normal">
+                          <Lock className="w-2.5 h-2.5" />
+                          Cannot be changed
+                        </span>
+                      )}
                     </label>
-                    <div className="relative group">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                    <div className="relative group" title={!!profileData?.email ? "Email is already set and cannot be changed" : ""}>
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                       <input 
                         type="email"
-                        required
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        placeholder="your@email.com"
-                        className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 outline-none transition-all text-gray-900"
+                        disabled={!!profileData?.email}
+                        placeholder="Your email address"
+                        className={`w-full pl-12 pr-12 py-4 border rounded-2xl text-sm font-bold outline-none transition-all ${!!profileData?.email ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed select-none' : 'bg-gray-50 border-gray-100 focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 text-gray-900'}`}
                       />
+                      {!!profileData?.email && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />}
                     </div>
                   </div>
 
+                  {/* Phone — Conditionally Editable */}
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1 flex items-center gap-1.5">
                       Phone Number
+                      {!!profileData?.phone && (
+                        <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-bold normal-case tracking-normal">
+                          <Lock className="w-2.5 h-2.5" />
+                          Cannot be changed
+                        </span>
+                      )}
                     </label>
-                    <div className="relative group">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                    <div className="relative group" title={!!profileData?.phone ? "Phone is already set and cannot be changed" : ""}>
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                       <input 
                         type="tel"
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        disabled={!!profileData?.phone}
                         placeholder="+91 00000 00000"
-                        className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 outline-none transition-all text-gray-900"
+                        className={`w-full pl-12 pr-12 py-4 border rounded-2xl text-sm font-bold outline-none transition-all ${!!profileData?.phone ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed select-none' : 'bg-gray-50 border-gray-100 focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 text-gray-900'}`}
                       />
+                      {!!profileData?.phone && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />}
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
-                   <p className="text-xs text-gray-400 font-medium max-w-[200px]">
-                     Changes will be saved to your profile immediately.
-                   </p>
+                   <div className="flex items-center gap-2 max-w-[220px]">
+                     <Info className="w-4 h-4 text-gray-300 shrink-0" />
+                     <p className="text-xs text-gray-400 font-medium">
+                       Email cannot be changed. Other fields will be saved immediately.
+                     </p>
+                   </div>
                    <button 
                      disabled={loading}
                      className="gradient-primary text-white px-8 py-4 rounded-2xl font-black text-sm flex items-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-70 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] transition-all"

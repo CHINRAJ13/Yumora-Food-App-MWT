@@ -128,7 +128,7 @@ const Login = () => {
     if (!phoneNumber) return;
     setOtpLoading(true);
     try {
-      await api.sendOtp(phoneNumber);
+      await api.sendOtp(phoneNumber, role);
       setIsOtpSent(true);
       toast({ title: "OTP Sent", description: "Please check your messages." });
     } catch (err: any) {

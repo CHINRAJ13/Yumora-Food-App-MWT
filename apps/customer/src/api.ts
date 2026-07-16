@@ -114,3 +114,7 @@ export const updatePassword = (data: any) => api.patch("/users/updateMyPassword"
 
 // Location Methods
 export const reverseGeocodeAddress = (lat: number, lng: number) => api.post('/locations/address', { lat, lng });
+
+// Payment Methods
+export const createPaymentOrder = (amount: number) => api.post("/payment/create-order", { amount });
+export const verifyPayment = (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => api.post("/payment/verify", data);

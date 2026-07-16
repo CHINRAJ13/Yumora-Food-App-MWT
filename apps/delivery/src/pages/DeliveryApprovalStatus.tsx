@@ -21,7 +21,7 @@ const DeliveryApprovalStatus = () => {
       return;
     }
     // If already approved, send to dashboard
-    if (user.deliveryStatus === 'approved') {
+    if (user.status === 'active') {
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -35,10 +35,10 @@ const DeliveryApprovalStatus = () => {
   }
 
   // Guard: hide while redirecting or if no user
-  if (!user || user.deliveryStatus === 'approved') return null;
+  if (!user || user.status === 'active') return null;
 
-  const status = (user.deliveryStatus as DeliveryStatus) || 'pending';
-  const comment = user.adminComment || '';
+  const status = (user.status as DeliveryStatus) || 'pending';
+  const comment = (user as any).deliveryProfile?.adminComment || '';
 
   const renderStatus = () => {
     switch (status) {

@@ -54,6 +54,9 @@ const DeliveryActiveOrder = ({ order, onPickup, onComplete, isProcessing }: Deli
               <IndianRupee className="w-3.5 h-3.5" />
               <span className="text-xs font-bold">{order.totalAmount}</span>
             </div>
+            <div className={`flex items-center gap-1 backdrop-blur-md rounded-lg px-2.5 py-1.5 ${order.paymentMethod === 'cod' ? 'bg-amber-400/30 text-amber-50' : 'bg-emerald-400/30 text-emerald-50'}`}>
+              <span className="text-[10px] font-black uppercase tracking-wider">{order.paymentMethod === 'cod' ? 'COD - Collect Cash' : 'PREPAID ONLINE'}</span>
+            </div>
           </div>
         </div>
       </div>

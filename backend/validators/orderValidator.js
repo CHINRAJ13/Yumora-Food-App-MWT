@@ -11,7 +11,7 @@ export const createOrderSchema = z.object({
     totalAmount: z.number().positive(),
     address: z.string().min(5, 'Address must be at least 5 characters'),
     phone: z.string().min(10, 'Invalid phone number'),
-    paymentMethod: z.enum(['cod', 'online']).default('cod'),
+    paymentMethod: z.enum(['cod', 'online', 'card', 'upi']).default('cod'),
     paymentId: z.string().optional()
   })
 });
