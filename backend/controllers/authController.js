@@ -202,7 +202,8 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
     }
     user = await User.create({
       phone,
-      name: `User_${phone.slice(-4)}`
+      name: `User_${phone.slice(-4)}`,
+      email: `user_${phone}_${Date.now()}@yumora.com`
     });
   } else {
     // Optionally check if they have the correct role if requesting as partner
