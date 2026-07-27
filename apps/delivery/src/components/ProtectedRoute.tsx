@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   const location = useLocation();
 
   // If authenticated delivery user is not approved, redirect to approval status page
-  if (isAuthenticated && user?.type === 'delivery' && (user as any).status !== 'active') {
+  if (isAuthenticated && user?.type === 'delivery' && !['active', 'approved'].includes((user as any).status)) {
     return <Navigate to="/approval-status" replace />;
   }
 
