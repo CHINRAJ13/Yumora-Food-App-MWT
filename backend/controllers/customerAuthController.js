@@ -9,7 +9,11 @@ export const registerCustomer = asyncHandler(async (req, res, next) => {
   if (!email && !phone) {
     return next(new AppError('Please provide an email or phone number', 400));
   }
-  const customer = await Customer.create({ name, email, phone, password });
+  const customerData = { name, password };
+  if (email) customerData.email = email;
+  if (phone) customerData.phone = phone;
+
+  const customer = await Customer.create(customerData);
   createSendToken(customer, 201, res, 'customer');
 });
 
