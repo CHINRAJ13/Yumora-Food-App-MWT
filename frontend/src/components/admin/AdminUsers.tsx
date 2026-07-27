@@ -245,10 +245,10 @@ const AdminUsers = () => {
 
                       <td className="px-8 py-5">
                         <div
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${statusBadge[user.status || 'active'].bg} ${statusBadge[user.status || 'active'].text}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${(statusBadge[user.status] || statusBadge['active']).bg} ${(statusBadge[user.status] || statusBadge['active']).text}`}
                         >
                           {(() => {
-                            const StatusIcon = statusBadge[user.status || 'active'].icon;
+                            const StatusIcon = (statusBadge[user.status] || statusBadge['active']).icon;
                             return <StatusIcon className="w-3 h-3" />;
                           })()}
                           <span className="text-[10px] font-black uppercase tracking-wider">
