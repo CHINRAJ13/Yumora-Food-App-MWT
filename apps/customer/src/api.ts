@@ -8,6 +8,25 @@ const api = axios.create({
   },
 });
 
+// Request interceptor to attach JWT token
+api.interceptors.request.use(
+  (config) => {
+    const authStorage = localStorage.getItem('yumora-auth');
+    if (authStorage) {
+      try {
+        const { state } = JSON.parse(authStorage);
+        if (state.token) {
+          config.headers.Authorization = `Bearer ${state.token}`;
+        }
+      } catch (e) {
+        console.error('Error parsing auth storage', e);
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor to handle standardized backend responses
 api.interceptors.response.use(
   (response) => {
