@@ -59,14 +59,7 @@ const Profile = () => {
   });
   const [profileData, setProfileData] = useState<any>(null);
 
-  // Delivery details form (only for delivery role)
-  const [deliveryForm, setDeliveryForm] = useState({
-    vehicleNumber: "",
-    licenseNumber: "",
-    vehicleType: "Bike",
-  });
-  const [deliveryEdited, setDeliveryEdited] = useState(false);
-  const [showReverifyWarning, setShowReverifyWarning] = useState(false);
+
 
   // Password state
   const [passwordForm, setPasswordForm] = useState({
@@ -89,14 +82,6 @@ const Profile = () => {
             phone: res.data.phone || "",
             email: res.data.email || "",
           });
-          // Set delivery form if delivery role
-          if (res.data.roles?.includes('delivery') && res.data.deliveryDetails) {
-            setDeliveryForm({
-              vehicleNumber: res.data.deliveryDetails.vehicleNumber || "",
-              licenseNumber: res.data.deliveryDetails.licenseNumber || "",
-              vehicleType: res.data.deliveryDetails.vehicleType || "Bike",
-            });
-          }
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
@@ -108,18 +93,7 @@ const Profile = () => {
     fetchProfile();
   }, [setUser]);
 
-  // Track if delivery details changed
-  useEffect(() => {
-    if (profileData?.roles?.includes('delivery') && profileData?.deliveryDetails) {
-      const original = profileData.deliveryDetails;
-      const changed = 
-        deliveryForm.vehicleNumber !== (original.vehicleNumber || "") ||
-        deliveryForm.licenseNumber !== (original.licenseNumber || "") ||
-        deliveryForm.vehicleType !== (original.vehicleType || "Bike");
-      setDeliveryEdited(changed);
-      setShowReverifyWarning(changed);
-    }
-  }, [deliveryForm, profileData]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,17 +103,13 @@ const Profile = () => {
       if (!profileData?.email && form.email) updateData.email = form.email;
       if (!profileData?.phone && form.phone) updateData.phone = form.phone;
 
-      // Include delivery details if edited
-      if (profileData?.roles?.includes('delivery') && deliveryEdited) {
-        updateData.deliveryDetails = deliveryForm;
-      }
+
 
       const res: any = await api.updateUserProfile(updateData);
       if (res.status === 'success') {
         setUser(res.data);
         setProfileData(res.data);
-        setDeliveryEdited(false);
-        setShowReverifyWarning(false);
+
         toast.success(res.message || "Profile updated successfully!");
       }
     } catch (err: any) {
@@ -228,7 +198,7 @@ const Profile = () => {
                 </div>
                 <h2 className="text-xl font-black text-gray-900 mb-1">{user?.name}</h2>
                 <p className="text-sm text-gray-400 font-medium">
-                  {profileData?.roles?.[0]?.toUpperCase()} • Coimbatore
+                  {profileData?.type?.toUpperCase()} • Coimbatore
                 </p>
                 
                 <div className="mt-8 flex flex-col gap-2">
@@ -265,7 +235,7 @@ const Profile = () => {
                       <span className="text-xs font-bold text-gray-500">Role</span>
                    </div>
                    <span className="text-xs font-black text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
-                     {profileData?.roles?.[0] ? profileData.roles[0].charAt(0).toUpperCase() + profileData.roles[0].slice(1) : ''}
+                     {profileData?.type ? profileData.type.charAt(0).toUpperCase() + profileData.type.slice(1) : ''}
                    </span>
                 </div>
 
@@ -285,40 +255,7 @@ const Profile = () => {
                    <span className="text-xs font-bold text-gray-700">{memberSince}</span>
                 </div>
 
-                {/* Delivery-specific status */}
-                {profileData?.roles?.includes('delivery') && (
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                     <div className="flex items-center gap-2.5">
-                        <Bike className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs font-bold text-gray-500">Delivery Status</span>
-                     </div>
-                     <StatusBadge status={profileData?.deliveryStatus || "pending"} />
-                  </div>
-                )}
 
-                {/* Restaurant-specific status */}
-                {profileData?.roles?.includes('restaurant') && (
-                  <>
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                       <div className="flex items-center gap-2.5">
-                          <ShieldCheck className="w-4 h-4 text-gray-400" />
-                          <span className="text-xs font-bold text-gray-500">Restaurant Status</span>
-                       </div>
-                       <StatusBadge status={profileData?.restaurantStatus || "pending"} />
-                    </div>
-                    {profileData?.restaurantId && (
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-2.5">
-                            <CreditCard className="w-4 h-4 text-gray-400" />
-                            <span className="text-xs font-bold text-gray-500">Restaurant ID</span>
-                         </div>
-                         <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded">
-                           {profileData.restaurantId}
-                         </span>
-                      </div>
-                    )}
-                  </>
-                )}
              </div>
 
              <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-100 flex items-center gap-4">
@@ -412,88 +349,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Delivery Details — Editable with re-verification */}
-                {profileData?.roles?.includes('delivery') && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="pt-6 border-t border-gray-100"
-                  >
-                    <div className="flex items-center gap-2 mb-6">
-                      <Bike className="w-5 h-5 text-primary" />
-                      <h4 className="text-base font-black text-gray-900">Delivery Details</h4>
-                    </div>
 
-                    {/* Re-verification Warning */}
-                    <AnimatePresence>
-                      {showReverifyWarning && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3"
-                        >
-                          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-bold text-amber-800">Admin Re-verification Required</p>
-                            <p className="text-xs text-amber-600 mt-1 leading-relaxed">
-                              Changing your delivery details (vehicle number, license, or vehicle type) will require admin re-verification. Your account will be set to <strong>pending</strong> status until approved.
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-1">
-                          Vehicle Type
-                        </label>
-                        <select
-                          value={deliveryForm.vehicleType}
-                          onChange={(e) => setDeliveryForm({ ...deliveryForm, vehicleType: e.target.value })}
-                          className="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 outline-none transition-all text-gray-900 appearance-none cursor-pointer"
-                        >
-                          <option value="Bike">🏍️ Bike</option>
-                          <option value="Scooter">🛵 Scooter</option>
-                          <option value="Cycle">🚲 Cycle</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-1">
-                          Vehicle Number
-                        </label>
-                        <div className="relative group">
-                          <Bike className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                          <input 
-                            type="text"
-                            value={deliveryForm.vehicleNumber}
-                            onChange={(e) => setDeliveryForm({ ...deliveryForm, vehicleNumber: e.target.value })}
-                            placeholder="TN 01 AB 1234"
-                            className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 outline-none transition-all text-gray-900"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-1">
-                          License Number
-                        </label>
-                        <div className="relative group">
-                          <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                          <input 
-                            type="text"
-                            value={deliveryForm.licenseNumber}
-                            onChange={(e) => setDeliveryForm({ ...deliveryForm, licenseNumber: e.target.value })}
-                            placeholder="DL-1234567890"
-                            className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:bg-white focus:border-primary/20 outline-none transition-all text-gray-900"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
 
                 <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
                    <div className="flex items-center gap-2 max-w-[220px]">
@@ -511,7 +367,7 @@ const Profile = () => {
                      ) : (
                        <Save className="w-4 h-4" />
                      )}
-                     {deliveryEdited ? "Save & Request Reverification" : "Save Profile"}
+                     {"Save Profile"}
                    </button>
                 </div>
               </form>

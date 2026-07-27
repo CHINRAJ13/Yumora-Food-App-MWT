@@ -233,7 +233,7 @@ const DeliveryDashboard = () => {
           >
             <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
           </button>
-                    {user?.roles?.includes("delivery") && user?.status !== "rejected" && user?.status !== "suspended" && (
+                    {user?.type === "delivery" && user?.status !== "rejected" && user?.status !== "suspended" && (
             <button
               onClick={handleToggleAvailability}
               disabled={processing === 'availability'}

@@ -100,7 +100,7 @@ const Profile = () => {
             email: res.data.email || "",
           });
           // Set delivery form if delivery role
-          if (res.data.roles?.includes('delivery') && res.data.deliveryProfile) {
+          if (res.data.type === 'delivery' && res.data.deliveryProfile) {
             setDeliveryForm({
               vehicleNumber: res.data.deliveryProfile.vehicleNumber || "",
               licenseNumber: res.data.deliveryProfile.licenseNumber || "",
@@ -120,7 +120,7 @@ const Profile = () => {
 
   // Track if delivery details changed
   useEffect(() => {
-    if (profileData?.roles?.includes('delivery') && profileData?.deliveryDetails) {
+    if (profileData?.type === 'delivery' && profileData?.deliveryDetails) {
       const original = profileData.deliveryDetails;
       const changed =
         deliveryForm.vehicleNumber !== (original.vehicleNumber || "") ||
@@ -146,7 +146,7 @@ const Profile = () => {
       if (!profileData?.phone && form.phone) updateData.phone = form.phone;
 
       // Include delivery details if edited
-      if (profileData?.roles?.includes('delivery') && deliveryEdited) {
+      if (profileData?.type === 'delivery' && deliveryEdited) {
         updateData.deliveryDetails = deliveryForm;
       }
 
@@ -270,7 +270,7 @@ const Profile = () => {
               </div>
               <h2 className="text-xl font-black text-gray-900 mb-1">{user?.name}</h2>
               <p className="text-sm text-gray-400 font-medium">
-                {profileData?.roles?.[0]?.toUpperCase()} • Coimbatore
+                {profileData?.type?.toUpperCase()} • Coimbatore
               </p>
 
               <div className="mt-8 flex flex-col gap-2">
@@ -307,7 +307,7 @@ const Profile = () => {
                   <span className="text-xs font-bold text-gray-500">Role</span>
                 </div>
                 <span className="text-xs font-black text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
-                  {profileData?.roles?.[0] ? profileData.roles[0].charAt(0).toUpperCase() + profileData.roles[0].slice(1) : ''}
+                  {profileData?.type ? profileData.type.charAt(0).toUpperCase() + profileData.type.slice(1) : ''}
                 </span>
               </div>
 
@@ -328,7 +328,7 @@ const Profile = () => {
               </div>
 
               {/* Delivery-specific status */}
-              {profileData?.roles?.includes('delivery') && (
+              {profileData?.type === 'delivery' && (
                 <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                   <div className="flex items-center gap-2.5">
                     <Bike className="w-4 h-4 text-gray-400" />
@@ -338,29 +338,7 @@ const Profile = () => {
                 </div>
               )}
 
-              {/* Restaurant-specific status */}
-              {profileData?.roles?.includes('restaurant') && (
-                <>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                    <div className="flex items-center gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-bold text-gray-500">Restaurant Status</span>
-                    </div>
-                    <StatusBadge status={profileData?.restaurantStatus || "pending"} />
-                  </div>
-                  {profileData?.restaurantId && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <CreditCard className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs font-bold text-gray-500">Restaurant ID</span>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded">
-                        {profileData.restaurantId}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
+
             </div>
 
             <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-100 flex items-center gap-4">
@@ -455,7 +433,7 @@ const Profile = () => {
                 </div>
 
                 {/* Delivery Details — Editable with re-verification */}
-                {profileData?.roles?.includes('delivery') && (
+                {profileData?.type === 'delivery' && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

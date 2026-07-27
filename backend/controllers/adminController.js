@@ -3,22 +3,19 @@ import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
 import Order from '../models/Order.js';
 import Restaurant from '../models/Restaurant.js';
-import User from '../models/User.js';
-import DeliveryProfile from '../models/DeliveryProfile.js';
+import Customer from '../models/Customer.js';
+import RestaurantOwner from '../models/RestaurantOwner.js';
+import DeliveryPartner from '../models/DeliveryPartner.js';
+import Admin from '../models/Admin.js';
 import Category from '../models/Category.js';
 import Banner from '../models/Banner.js';
 import { sendEmail } from '../utils/email.js';
 import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted } from '../socket.js';
 
-/**
- * @desc    Get dashboard stats
- * @route   GET /api/admin/stats
- * @access  Admin
- */
 export const getStats = asyncHandler(async (req, res, next) => {
   const orderCount = await Order.countDocuments();
   const restaurantCount = await Restaurant.countDocuments();
-  const userCount = await User.countDocuments();
+  const customerCount = await Customer.countDocuments();
   
   const revenue = await Order.aggregate([
     { $match: { status: 'Delivered' } },
@@ -28,26 +25,31 @@ export const getStats = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'Stats retrieved successfully', {
     orderCount,
     restaurantCount,
-    userCount,
+    userCount: customerCount, // Keeping the key name userCount for frontend compatibility
     totalRevenue: revenue[0]?.total || 0
   });
 });
 
-/**
- * @desc    Get all orders for admin
- * @route   GET /api/admin/orders
- * @access  Admin
- */
 export const getAllOrders = asyncHandler(async (req, res, next) => {
-  const orders = await Order.find().sort('-createdAt');
+  const orders = await Order.find().sort('-createdAt').lean();
+  
+  // Backwards compatibility: fetch customer name for older orders
+  for (let order of orders) {
+    if (!order.customerName && order.userId && order.userId !== 'guest') {
+      try {
+        const customer = await Customer.findById(order.userId);
+        if (customer) {
+          order.customerName = customer.name;
+        }
+      } catch (err) {
+        console.error('Error fetching customer name for order', err);
+      }
+    }
+  }
+
   sendResponse(res, 200, 'All orders retrieved successfully', orders);
 });
 
-/**
- * @desc    Update any order status
- * @route   PATCH /api/admin/orders/:id
- * @access  Admin
- */
 export const updateOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -58,10 +60,8 @@ export const updateOrder = asyncHandler(async (req, res, next) => {
     return next(new AppError('Order not found', 404));
   }
 
-  // Emit real-time update to customer & admin listeners
   emitOrderUpdate(id, status, order);
 
-  // Notify delivery riders when order becomes ready for pickup
   if (status === 'Ready for Pickup') {
     emitNewAvailableOrder(order);
   }
@@ -69,11 +69,6 @@ export const updateOrder = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'Order updated successfully', order);
 });
 
-/**
- * @desc    Assign a delivery person to an order
- * @route   PATCH /api/admin/orders/:id/assign
- * @access  Admin
- */
 export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { deliveryPersonId } = req.body;
@@ -82,8 +77,8 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
     return next(new AppError('Delivery person ID is required', 400));
   }
 
-  const deliveryPerson = await User.findById(deliveryPersonId);
-  if (!deliveryPerson || !deliveryPerson.roles.includes('delivery')) {
+  const deliveryPerson = await DeliveryPartner.findById(deliveryPersonId);
+  if (!deliveryPerson) {
     return next(new AppError('Invalid delivery person', 400));
   }
 
@@ -108,29 +103,21 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'Delivery person assigned successfully', order);
 });
 
-/**
- * @desc    Get all users with delivery role
- * @route   GET /api/admin/delivery-persons
- * @access  Admin
- */
 export const getDeliveryPersons = asyncHandler(async (req, res, next) => {
-  const deliveryPersons = await User.find({ roles: 'delivery' }).select('name email phone roles status');
+  const deliveryPersons = await DeliveryPartner.find().select('name email phone status');
   sendResponse(res, 200, 'Delivery persons retrieved', deliveryPersons);
 });
 
-// --- Restaurants ---
 export const getAllRestaurants = asyncHandler(async (req, res, next) => {
   const restaurants = await Restaurant.find();
   sendResponse(res, 200, 'Restaurants retrieved', restaurants);
 });
 
 export const createRestaurant = asyncHandler(async (req, res, next) => {
-  // If id is not provided, generate one
   if (!req.body.id) {
     req.body.id = Date.now().toString();
   }
   
-  // If a file was uploaded via Cloudinary, use its path
   if (req.file) {
     req.body.image = req.file.path;
   }
@@ -140,7 +127,6 @@ export const createRestaurant = asyncHandler(async (req, res, next) => {
 });
 
 export const updateRestaurant = asyncHandler(async (req, res, next) => {
-  // If a file was uploaded via Cloudinary, use its path
   if (req.file) {
     req.body.image = req.file.path;
   }
@@ -153,7 +139,12 @@ export const updateRestaurant = asyncHandler(async (req, res, next) => {
 export const deleteRestaurant = asyncHandler(async (req, res, next) => {
   const restaurant = await Restaurant.findOneAndDelete({ id: req.params.id });
   if (!restaurant) return next(new AppError('Restaurant not found', 404));
-  sendResponse(res, 200, 'Restaurant deleted', null);
+
+  if (restaurant.ownerId) {
+    await RestaurantOwner.findByIdAndDelete(restaurant.ownerId);
+  }
+
+  sendResponse(res, 200, 'Restaurant and owner deleted', null);
 });
 
 export const verifyRestaurant = asyncHandler(async (req, res, next) => {
@@ -175,21 +166,11 @@ export const verifyRestaurant = asyncHandler(async (req, res, next) => {
 
 // --- Users ---
 export const getAllUsers = asyncHandler(async (req, res, next) => {
-  const users = await User.aggregate([
-    {
-      $lookup: {
-        from: 'deliveryprofiles',
-        localField: '_id',
-        foreignField: 'userId',
-        as: 'deliveryDetails'
-      }
-    },
-    {
-      $unwind: {
-        path: '$deliveryDetails',
-        preserveNullAndEmptyArrays: true
-      }
-    },
+  // Aggregate all user types into one response
+  const customers = await Customer.find().lean().then(docs => docs.map(d => ({ ...d, type: 'customer' })));
+  const deliveryPartners = await DeliveryPartner.find().lean().then(docs => docs.map(d => ({ ...d, type: 'delivery', deliveryDetails: d })));
+  
+  const restaurantOwners = await RestaurantOwner.aggregate([
     {
       $lookup: {
         from: 'restaurants',
@@ -204,54 +185,69 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
         preserveNullAndEmptyArrays: true
       }
     }
-  ]);
-  sendResponse(res, 200, 'Users retrieved', users);
+  ]).then(docs => docs.map(d => ({ ...d, type: 'restaurant' })));
+
+  const admins = await Admin.find().lean().then(docs => docs.map(d => ({ ...d, type: 'admin' })));
+
+  const allUsers = [...customers, ...deliveryPartners, ...restaurantOwners, ...admins];
+  // Sort by createdAt descending
+  allUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  sendResponse(res, 200, 'Users retrieved', allUsers);
 });
 
 export const updateUserRole = asyncHandler(async (req, res, next) => {
-  const { roles } = req.body;
-  
-  if (!roles || !Array.isArray(roles)) {
-    return next(new AppError('Please provide a valid roles array', 400));
-  }
-
-  const user = await User.findByIdAndUpdate(req.params.id, { roles }, { returnDocument: 'after' });
-  if (!user) return next(new AppError('User not found', 404));
-  sendResponse(res, 200, 'User updated successfully', user);
+  return next(new AppError('Roles can no longer be updated dynamically in the new architecture.', 400));
 });
 
-/**
- * @desc    Update user status (approve/suspend)
- * @route   PATCH /api/admin/users/:id/status
- * @access  Admin
- */
 export const updateUserStatus = asyncHandler(async (req, res, next) => {
   const { status, comment } = req.body;
+  const userId = req.params.id;
 
-  if (!status || !['pending', 'active', 'suspended'].includes(status)) {
+  if (!status || !['pending', 'active', 'suspended', 'approved', 'rejected'].includes(status)) {
     return next(new AppError('Please provide a valid status', 400));
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    { status },
-    { new: true, runValidators: true }
-  );
+  // Try to find the user in each collection
+  let user = await Customer.findById(userId);
+  let userType = 'customer';
 
   if (!user) {
+    user = await RestaurantOwner.findById(userId);
+    userType = 'restaurant';
+  }
+  if (!user) {
+    user = await DeliveryPartner.findById(userId);
+    userType = 'delivery';
+  }
+
+  if (!user) {
+    const isAdmin = await Admin.findById(userId);
+    if (isAdmin) {
+      return next(new AppError('Cannot update status of Admin users', 403));
+    }
     return next(new AppError('User not found', 404));
   }
 
-  // If the user has a restaurant role, update the Restaurant profile
-  if (user.roles.includes('restaurant')) {
+  let finalStatus = status;
+  if (userType === 'delivery') {
+    if (status === 'active') finalStatus = 'approved';
+    if (status === 'suspended') finalStatus = 'rejected';
+  }
+
+  user.status = finalStatus;
+  await user.save({ validateBeforeSave: false });
+
+  // Post-update actions based on role
+  if (userType === 'restaurant') {
     const restaurant = await Restaurant.findOne({ ownerId: user._id });
     if (restaurant) {
-      if (status === 'active') {
+      if (status === 'active' || status === 'approved') {
         await Restaurant.findByIdAndUpdate(restaurant._id, {
           approvalStatus: 'approved',
           isActive: true
         });
-      } else if (status === 'suspended') {
+      } else if (status === 'suspended' || status === 'rejected') {
         await Restaurant.findByIdAndUpdate(restaurant._id, {
           approvalStatus: 'rejected',
           adminComment: comment || null,
@@ -260,10 +256,9 @@ export const updateUserStatus = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // Send email notification
     try {
-      const emailSubject = status === 'active' ? 'Your restaurant has been approved' : 'Your restaurant application was rejected';
-      const emailText = status === 'active'
+      const emailSubject = (status === 'active' || status === 'approved') ? 'Your restaurant has been approved' : 'Your restaurant application was rejected';
+      const emailText = (status === 'active' || status === 'approved')
         ? 'Congratulations! Your restaurant account is now approved and active.'
         : `We regret to inform you that your restaurant application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
       await sendEmail(user.email, emailSubject, emailText);
@@ -272,26 +267,10 @@ export const updateUserStatus = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // If the user has a delivery role, update the DeliveryProfile
-  if (user.roles.includes('delivery')) {
-    const deliveryProfile = await DeliveryProfile.findOne({ userId: user._id });
-    if (deliveryProfile) {
-      if (status === 'active') {
-        await DeliveryProfile.findByIdAndUpdate(deliveryProfile._id, {
-          status: 'approved'
-        });
-      } else if (status === 'suspended') {
-        await DeliveryProfile.findByIdAndUpdate(deliveryProfile._id, {
-          status: 'rejected',
-          adminComment: comment || null
-        });
-      }
-    }
-
-    // Send email notification
+  if (userType === 'delivery') {
     try {
-      const emailSubject = status === 'active' ? 'Your delivery account has been approved' : 'Your delivery application was rejected';
-      const emailText = status === 'active'
+      const emailSubject = (status === 'active' || status === 'approved') ? 'Your delivery account has been approved' : 'Your delivery application was rejected';
+      const emailText = (status === 'active' || status === 'approved')
         ? 'Congratulations! Your delivery account is now approved and active.'
         : `We regret to inform you that your delivery application was rejected. ${comment ? 'Comment: ' + comment : ''}`;
       await sendEmail(user.email, emailSubject, emailText);
@@ -309,7 +288,6 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, 'Category deleted', null);
 });
 
-// --- Categories ---
 export const getAllCategories = asyncHandler(async (req, res, next) => {
   const categories = await Category.find();
   sendResponse(res, 200, 'Categories retrieved', categories);
@@ -318,7 +296,6 @@ export const getAllCategories = asyncHandler(async (req, res, next) => {
 export const createCategory = asyncHandler(async (req, res, next) => {
   if (!req.body.id) req.body.id = Date.now().toString();
   
-  // If a file was uploaded via Cloudinary, use its path
   if (req.file) {
     req.body.image = req.file.path;
   }
@@ -327,7 +304,6 @@ export const createCategory = asyncHandler(async (req, res, next) => {
   sendResponse(res, 201, 'Category created', category);
 });
 
-// --- Banners ---
 export const getAllBanners = asyncHandler(async (req, res, next) => {
   const banners = await Banner.find();
   sendResponse(res, 200, 'Banners retrieved', banners);
@@ -336,7 +312,6 @@ export const getAllBanners = asyncHandler(async (req, res, next) => {
 export const createBanner = asyncHandler(async (req, res, next) => {
   if (!req.body.id) req.body.id = Date.now().toString();
 
-  // If a file was uploaded via Cloudinary, use its path
   if (req.file) {
     req.body.image = req.file.path;
   }

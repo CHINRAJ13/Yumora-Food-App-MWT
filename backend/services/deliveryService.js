@@ -1,5 +1,4 @@
 import Order from '../models/Order.js';
-import User from '../models/User.js';
 
 /**
  * Get orders that are ready for pickup and not yet assigned to any rider

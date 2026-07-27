@@ -32,6 +32,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   // 2. Prepare Order Data (userId from auth middleware)
   const orderData = {
     userId: req.user?._id || "guest",
+    customerName: req.user?.name || "Guest User",
     items,
     totalAmount,
     address,

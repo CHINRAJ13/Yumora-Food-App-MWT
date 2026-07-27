@@ -44,15 +44,15 @@ export const getBanners = () => api.get("/banners");
 
 export const registerUser = (data: any) => {
   if (data instanceof FormData) {
-    return api.post('/auth/register', data, {
+    return api.post('/auth/delivery/register', data, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   }
-  return api.post('/auth/register', data);
+  return api.post('/auth/delivery/register', data);
 };
-export const loginUser = (data: any) => api.post('/auth/login', data);
-export const logoutUser = () => api.get('/auth/logout');
-export const sendOtp = (phone: string, role?: string) => api.post('/auth/send-otp', { phone, role });
+export const loginUser = (data: any) => api.post('/auth/delivery/login', data);
+export const logoutUser = () => api.post('/auth/logout');
+export const sendOtp = (phone: string, role?: string) => api.post('/auth/send-otp', { phone, role }); // not used for delivery usually but keeping structure
 export const verifyOtp = (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp });
 export const forgotPassword = (data: { email?: string; phone?: string }) => api.post('/auth/forgot-password', data);
 export const resetPassword = (token: string, data: any) => api.patch(`/auth/reset-password/${token}`, data);

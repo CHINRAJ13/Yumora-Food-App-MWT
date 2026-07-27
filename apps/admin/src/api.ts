@@ -42,10 +42,10 @@ export const getRestaurantById = (id: string) => api.get(`/restaurants/${id}`);
 export const getCategories = () => api.get("/categories");
 export const getBanners = () => api.get("/banners");
 
-export const registerUser = (data: any) => api.post('/auth/register', data);
-export const loginUser = (data: any) => api.post('/auth/login', data);
-export const logoutUser = () => api.get('/auth/logout');
-export const sendOtp = (phone: string) => api.post('/auth/send-otp', { phone });
+export const registerUser = (data: any) => api.post('/auth/admin/register', data);
+export const loginUser = (data: any) => api.post('/auth/admin/login', data);
+export const logoutUser = () => api.post('/auth/logout');
+export const sendOtp = (phone: string) => api.post('/auth/send-otp', { phone }); // Not used
 export const verifyOtp = (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp });
 export const forgotPassword = (data: { email?: string; phone?: string }) => api.post('/auth/forgot-password', data);
 export const resetPassword = (token: string, data: any) => api.patch(`/auth/reset-password/${token}`, data);

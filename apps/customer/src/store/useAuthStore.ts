@@ -7,7 +7,7 @@ interface User {
   name: string;
   email: string;
   phone?: string;
-  roles: ('user' | 'admin' | 'delivery' | 'restaurant')[];
+  type: 'customer' | 'admin' | 'delivery' | 'restaurant';
 }
 
 interface AuthState {

@@ -96,24 +96,24 @@ const AdminApprovals = () => {
             >
               {/* Role Indicator Strip */}
               <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                user.roles?.includes('restaurant') ? 'bg-purple-500' : 'bg-blue-500'
+                user.type === 'restaurant' ? 'bg-purple-500' : 'bg-blue-500'
               }`} />
 
               <div className="flex flex-col h-full">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl ${
-                      user.roles?.includes('restaurant') ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+                      user.type === 'restaurant' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
                     }`}>
-                      {user.roles?.includes('restaurant') ? <ChefHat /> : <Truck />}
+                      {user.type === 'restaurant' ? <ChefHat /> : <Truck />}
                     </div>
                     <div>
                       <h3 className="font-black text-gray-900">{user.name}</h3>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-black uppercase tracking-widest ${
-                          user.roles?.includes('restaurant') ? 'text-purple-500' : 'text-blue-500'
+                          user.type === 'restaurant' ? 'text-purple-500' : 'text-blue-500'
                         }`}>
-                          {user.roles?.includes('restaurant') ? 'restaurant' : 'delivery'} Applicant
+                          {user.type === 'restaurant' ? 'restaurant' : 'delivery'} Applicant
                         </span>
                         <span className="w-1 h-1 rounded-full bg-gray-200" />
                         <span className="text-[10px] text-gray-400 font-bold uppercase">{new Date(user.createdAt).toLocaleDateString()}</span>
@@ -140,7 +140,7 @@ const AdminApprovals = () => {
                       <p className="text-xs font-bold text-gray-700">{user.phone || 'N/A'}</p>
                     </div>
 
-                    {user.roles?.includes('restaurant') && (
+                    {user.type === 'restaurant' && (
                       <div className="col-span-2 pt-2 border-t border-gray-100 mt-2">
                         <div className="flex items-center gap-3 mb-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
                           {user.restaurantDetails?.image ? (
@@ -164,7 +164,7 @@ const AdminApprovals = () => {
                       </div>
                     )}
 
-                    {user.roles?.includes('delivery') && (
+                    {user.type === 'delivery' && (
                       <>
                         <div className="space-y-1 pt-2 border-t border-gray-100">
                           <p className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Vehicle No.</p>

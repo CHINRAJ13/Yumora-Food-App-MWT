@@ -36,7 +36,7 @@ const RestaurantSchema = new mongoose.Schema({
   menu: [MenuItemSchema],
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'RestaurantOwner',
     default: null
   },
   isActive: {
@@ -63,7 +63,9 @@ const RestaurantSchema = new mongoose.Schema({
     default: false
   },
   aadharNumber: { type: String, required: true },
-  aadharImage: { type: String, required: true }
+  aadharImage: { type: String, required: true },
+  fssaiNumber: { type: String, required: true },
+  fssaiCertificate: { type: String, required: true }
 }, { timestamps: true });
 
 // 2dsphere index for geolocation queries

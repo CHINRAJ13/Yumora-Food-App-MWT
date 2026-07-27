@@ -17,8 +17,8 @@ const ApprovalModal = ({ user, isOpen, onClose, onApprove, onReject }: ApprovalM
 
   if (!user) return null;
 
-  const isRestaurant = user.roles?.includes('restaurant');
-  const isDelivery = user.roles?.includes('delivery');
+  const isRestaurant = user.type === 'restaurant';
+  const isDelivery = user.type === 'delivery';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -89,10 +89,10 @@ const ApprovalModal = ({ user, isOpen, onClose, onApprove, onReject }: ApprovalM
                   </div>
                 </div>
 
-                {/* Delivery Specific: License */}
+                {/* Delivery Specific: License & RC */}
                 {isDelivery && (
-                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold uppercase text-gray-500">License Number</p>
                         <p className="text-sm font-bold text-gray-900 uppercase">{user.deliveryDetails?.licenseNumber || 'Not provided'}</p>
@@ -102,18 +102,98 @@ const ApprovalModal = ({ user, isOpen, onClose, onApprove, onReject }: ApprovalM
                         <p className="text-sm font-bold text-gray-900 uppercase">{user.deliveryDetails?.vehicleNumber || 'Not provided'}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">License Image</p>
-                    <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                      {user.deliveryDetails?.licenseImage ? (
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">License Image</p>
+                        <div className="w-full h-32 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                          {user.deliveryDetails?.licenseImage ? (
+                            <img 
+                              src={user.deliveryDetails.licenseImage} 
+                              alt="License" 
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => window.open(user.deliveryDetails.licenseImage, '_blank')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase text-center p-2">No Image</div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">RC Book Image</p>
+                        <div className="w-full h-32 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                          {user.deliveryDetails?.rcImage ? (
+                            <img 
+                              src={user.deliveryDetails.rcImage} 
+                              alt="RC Book" 
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => window.open(user.deliveryDetails.rcImage, '_blank')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase text-center p-2">No Image</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delivery Specific: PAN & Bank Details */}
+                {isDelivery && (
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase text-gray-500">PAN Number</p>
+                        <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">{user.deliveryDetails?.panNumber || 'Not provided'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">PAN Image</p>
+                        <div className="w-full h-32 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                          {user.deliveryDetails?.panImage ? (
+                            <img 
+                              src={user.deliveryDetails.panImage} 
+                              alt="PAN Card" 
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => window.open(user.deliveryDetails.panImage, '_blank')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase text-center p-2">No Image</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-4 grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase text-gray-500">Account Number</p>
+                        <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">{user.deliveryDetails?.accountNumber || 'Not provided'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase text-gray-500">IFSC Code</p>
+                        <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">{user.deliveryDetails?.ifscCode || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delivery Specific: Selfie */}
+                {isDelivery && (
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-6">
+                    <div className="w-24 h-24 bg-gray-100 rounded-full overflow-hidden border-2 border-gray-200 shrink-0">
+                      {user.deliveryDetails?.selfieImage ? (
                         <img 
-                          src={user.deliveryDetails.licenseImage} 
-                          alt="License" 
-                          className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
-                          onClick={() => window.open(user.deliveryDetails.licenseImage, '_blank')}
+                          src={user.deliveryDetails.selfieImage} 
+                          alt="Selfie" 
+                          className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                          onClick={() => window.open(user.deliveryDetails.selfieImage, '_blank')}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase">No Image Provided</div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase text-center">No Image</div>
                       )}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Live Selfie Verification</p>
+                      <p className="text-sm font-medium text-gray-700">Used for facial recognition and delivery identity verification.</p>
                     </div>
                   </div>
                 )}
@@ -124,13 +204,28 @@ const ApprovalModal = ({ user, isOpen, onClose, onApprove, onReject }: ApprovalM
                     <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Restaurant Name</p>
                     <p className="text-sm font-bold text-gray-900 mb-4">{user.restaurantDetails?.name || 'Not provided'}</p>
                     <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">Restaurant / Business Proof</p>
-                    <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                    <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 mb-4">
                       {user.restaurantDetails?.image ? (
                         <img 
                           src={user.restaurantDetails.image} 
                           alt="Restaurant" 
                           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
                           onClick={() => window.open(user.restaurantDetails.image, '_blank')}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase">No Image Provided</div>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">FSSAI Number</p>
+                    <p className="text-sm font-bold text-gray-900 mb-4 tracking-widest">{user.restaurantDetails?.fssaiNumber || 'Not provided'}</p>
+                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">FSSAI Certificate Image</p>
+                    <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                      {user.restaurantDetails?.fssaiCertificate ? (
+                        <img 
+                          src={user.restaurantDetails.fssaiCertificate} 
+                          alt="FSSAI Certificate" 
+                          className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                          onClick={() => window.open(user.restaurantDetails.fssaiCertificate, '_blank')}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase">No Image Provided</div>

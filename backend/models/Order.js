@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
   userId: String,
+  customerName: {
+    type: String,
+    default: null
+  },
   email: String,
   phone: String,
   restaurantId: {
@@ -34,7 +38,7 @@ const orderSchema = new mongoose.Schema({
   // Delivery person fields
   deliveryPersonId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'DeliveryPartner',
     default: null
   },
   deliveryPersonName: {

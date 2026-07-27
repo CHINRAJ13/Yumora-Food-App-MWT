@@ -19,7 +19,10 @@ import errorHandler from './middleware/errorHandler.js';
 import { init as initSocket } from './socket.js';
 
 // Routes
-import authRoutes from './routes/authRoutes.js';
+import customerAuthRoutes from './routes/customerAuthRoutes.js';
+import restaurantAuthRoutes from './routes/restaurantAuthRoutes.js';
+import deliveryAuthRoutes from './routes/deliveryAuthRoutes.js';
+import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import restaurantRoutes from './routes/restaurants.js';
 import orderRoutes from './routes/orderRoutes.js';
 import categoryRoutes from './routes/categories.js';
@@ -112,7 +115,22 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is healthy' });
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth/customer', customerAuthRoutes);
+app.use('/api/auth/restaurant', restaurantAuthRoutes);
+app.use('/api/auth/delivery', deliveryAuthRoutes);
+app.use('/api/auth/admin', adminAuthRoutes);
+
+// General Logout (clears JWT cookie)
+app.post('/api/auth/logout', (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
+  res.status(200).json({ status: 'success' });
+});
+
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);

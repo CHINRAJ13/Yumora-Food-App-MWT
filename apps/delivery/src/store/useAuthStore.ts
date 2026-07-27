@@ -9,7 +9,7 @@ interface User {
   phone?: string;
   availability?: boolean;
   status?: string;
-  roles: ('user' | 'admin' | 'delivery' | 'restaurant')[];
+  type: 'customer' | 'admin' | 'delivery' | 'restaurant';
 }
 
 interface AuthState {

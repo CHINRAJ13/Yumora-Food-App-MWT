@@ -1,6 +1,6 @@
 import Order from '../models/Order.js';
 import Restaurant from '../models/Restaurant.js';
-import User from '../models/User.js';
+import DeliveryPartner from '../models/DeliveryPartner.js';
 import AppError from '../utils/AppError.js';
 import { sendEmail } from '../utils/email.js';
 import { sendSMS } from '../utils/sms.js';
@@ -13,9 +13,9 @@ export const createOrderService = async (orderData) => {
   try {
     const restaurant = await Restaurant.findOne({ id: order.restaurantId });
     if (restaurant?.location?.coordinates?.length === 2) {
-      const nearestDelivery = await User.findOne({
-        roles: 'delivery',
-        deliveryStatus: 'online',
+      const nearestDelivery = await DeliveryPartner.findOne({
+        availability: true,
+        status: { $in: ['approved', 'active'] },
         location: {
           $near: {
             $geometry: {
@@ -123,16 +123,15 @@ export const addOrderReviewService = async (id, userId, { restaurantRating, rest
       createdAt: new Date()
     };
     
-    // Update Delivery Person average rating in DeliveryProfile
-    const DeliveryProfile = (await import('../models/DeliveryProfile.js')).default;
-    const deliveryProfile = await DeliveryProfile.findOne({ userId: order.deliveryPersonId });
-    if (deliveryProfile) {
-      const currentAvg = deliveryProfile.rating || 0;
-      const currentTotal = deliveryProfile.totalRatings || 0;
+    // Update Delivery Person average rating
+    const partner = await DeliveryPartner.findById(order.deliveryPersonId);
+    if (partner) {
+      const currentAvg = partner.rating || 0;
+      const currentTotal = partner.totalRatings || 0;
       
-      deliveryProfile.rating = ((currentAvg * currentTotal) + deliveryRating) / (currentTotal + 1);
-      deliveryProfile.totalRatings = currentTotal + 1;
-      await deliveryProfile.save();
+      partner.rating = ((currentAvg * currentTotal) + deliveryRating) / (currentTotal + 1);
+      partner.totalRatings = currentTotal + 1;
+      await partner.save();
     }
     isUpdated = true;
   }

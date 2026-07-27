@@ -19,10 +19,10 @@ import {
   ChefHat
 } from "lucide-react";
 
-type RoleTab = "user" | "restaurant" | "delivery" | "admin";
+type RoleTab = "customer" | "restaurant" | "delivery" | "admin";
 
 const roleTabs: { id: RoleTab; label: string; icon: any }[] = [
-  { id: "user", label: "Customers", icon: UserIcon },
+  { id: "customer", label: "Customers", icon: UserIcon },
   { id: "restaurant", label: "Restaurants", icon: ChefHat },
   { id: "delivery", label: "Delivery Riders", icon: Truck },
   { id: "admin", label: "Admins", icon: ShieldCheck },
@@ -39,7 +39,7 @@ const AdminUsers = () => {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<RoleTab>("user");
+  const [activeTab, setActiveTab] = useState<RoleTab>("customer");
 
   useEffect(() => {
     fetchUsers();
@@ -80,7 +80,7 @@ const AdminUsers = () => {
 
   const filtered = users.filter(
     (u) =>
-      u.roles?.includes(activeTab) &&
+      u.type === activeTab &&
       (u.name?.toLowerCase().includes(search.toLowerCase()) ||
        u.email?.toLowerCase().includes(search.toLowerCase()))
   );
@@ -111,7 +111,7 @@ const AdminUsers = () => {
       <div className="flex items-center gap-2 p-1 bg-gray-100/50 rounded-2xl w-fit border border-gray-200/50">
         {roleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
-          const count = users.filter(u => u.roles?.includes(tab.id)).length;
+          const count = users.filter(u => u.type === tab.id).length;
           return (
             <button
               key={tab.id}
@@ -253,9 +253,10 @@ const AdminUsers = () => {
                           <select
                             value={user.status || 'active'}
                             onChange={(e) => handleStatusChange(user._id, e.target.value)}
+                            disabled={user.type === 'admin'}
                             className={`text-[10px] font-bold border-none rounded-xl px-3 py-2 focus:ring-2 cursor-pointer outline-none transition-all ${
                               user.status === 'suspended' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
-                            }`}
+                            } ${user.type === 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             <option value="active">Active</option>
                             <option value="pending">Pending</option>

@@ -1,6 +1,5 @@
 import Order from '../models/Order.js';
 import Restaurant from '../models/Restaurant.js';
-import User from '../models/User.js';
 
 /**
  * Get the restaurant linked to the current user

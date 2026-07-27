@@ -18,3 +18,4 @@ export const uploadRestaurant = multer({ storage: createStorage('restaurants') }
 export const uploadFood = multer({ storage: createStorage('foods') });
 export const uploadBanner = multer({ storage: createStorage('banners') });
 export const uploadCategory = multer({ storage: createStorage('categories') });
+export const uploadDelivery = multer({ storage: createStorage('deliveries') });

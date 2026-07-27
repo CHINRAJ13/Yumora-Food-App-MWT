@@ -40,7 +40,7 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.roles?.includes('admin')) {
+      if (user.type === 'admin') {
         navigate('/');
       } else {
         setError("Access denied. Admin privileges required.");

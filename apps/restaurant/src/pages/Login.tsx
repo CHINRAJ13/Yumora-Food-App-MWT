@@ -39,10 +39,12 @@ const Login = () => {
   const [vehicleType, setVehicleType] = useState("Bike");
   const [aadharNumber, setAadharNumber] = useState("");
   const [aadharImage, setAadharImage] = useState<File | null>(null);
+  const [fssaiNumber, setFssaiNumber] = useState("");
+  const [fssaiCertificate, setFssaiCertificate] = useState<File | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.roles?.includes('restaurant')) {
+      if (user.type === 'restaurant') {
         navigate('/');
       } else {
         setError("Access denied. Restaurant account required.");
@@ -86,7 +88,8 @@ const Login = () => {
         vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
         licenseNumber: role === 'delivery' ? licenseNumber : undefined,
         vehicleType: role === 'delivery' ? vehicleType : undefined,
-        aadharNumber: aadharNumber
+        aadharNumber: aadharNumber,
+        fssaiNumber: role === 'restaurant' ? fssaiNumber : undefined
       };
 
       let finalData;
@@ -99,6 +102,7 @@ const Login = () => {
         });
         if (restaurantImage) formData.append('image', restaurantImage);
         if (aadharImage) formData.append('aadharImage', aadharImage);
+        if (fssaiCertificate) formData.append('fssaiCertificate', fssaiCertificate);
         finalData = formData;
       } else {
         finalData = signupData;
@@ -357,6 +361,22 @@ const Login = () => {
                       <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Aadhar Image</Label>
                       <Input type="file" accept="image/*" onChange={(e) => setAadharImage(e.target.files?.[0] || null)} required className="h-10 bg-white/50 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white" />
                     </div>
+
+                    <motion.div initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                      {role === 'restaurant' && (
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">FSSAI Number</Label>
+                            <Input value={fssaiNumber} onChange={(e) => setFssaiNumber(e.target.value)} placeholder="14 Digit FSSAI Number" required maxLength={14} minLength={14} className="h-10 bg-white/50 rounded-xl" />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">FSSAI Certificate Image</Label>
+                            <Input type="file" accept="image/*" onChange={(e) => setFssaiCertificate(e.target.files?.[0] || null)} required className="h-10 bg-white/50 rounded-xl pt-2 file:mr-4 file:py-0 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white" />
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
 
 
                     <div className="space-y-2">

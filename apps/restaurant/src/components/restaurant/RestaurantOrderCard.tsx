@@ -96,9 +96,9 @@ const RestaurantOrderCard = ({ order, onUpdateStatus, isProcessing }: Restaurant
 
         {/* Customer Info */}
         <div className="flex items-center gap-4 text-[10px] text-gray-400 font-bold">
-          <div className="flex items-center gap-1">
-            <User className="w-3 h-3" />
-            <span>{order.email || "Customer"}</span>
+          <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+            <User className="w-4 h-4 text-gray-400" />
+            <span>{order.customerName || order.email || "Customer"}</span>
           </div>
           {order.phone && (
             <div className="flex items-center gap-1">

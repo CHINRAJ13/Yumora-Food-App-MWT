@@ -89,6 +89,7 @@ const AdminOrders = () => {
     try {
       const res = await getAdminOrders();
       setOrders(res.data);
+      console.log(res.data)
     } catch (err) {
       toast.error("Failed to fetch orders");
     } finally {
@@ -204,7 +205,7 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex flex-col">
-                      <span className="font-bold text-gray-900 text-sm truncate max-w-[150px]">{order.userId?.name || "Guest User"}</span>
+                      <span className="font-bold text-gray-900 text-sm truncate max-w-[150px]">{order.customerName || "Guest User"}</span>
                       <span className="text-[10px] font-medium text-gray-400 mt-0.5 truncate max-w-[150px]">{order.email}</span>
                     </div>
                   </td>

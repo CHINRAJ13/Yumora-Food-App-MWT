@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   const location = useLocation();
 
   // If authenticated delivery user is not approved, redirect to approval status page
-  if (isAuthenticated && user?.roles?.includes('delivery') && (user as any).status !== 'active') {
+  if (isAuthenticated && user?.type === 'delivery' && (user as any).status !== 'active') {
     return <Navigate to="/approval-status" replace />;
   }
 
@@ -27,11 +27,11 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   // Unify role checking: support both 'roles' array and 'requiredRole' string
   const allowedRoles = roles || (requiredRole ? [requiredRole] : null);
 
-  if (allowedRoles && user && !allowedRoles.some(r => user.roles?.includes(r as any))) {
+  if (allowedRoles && user && !allowedRoles.some(r => user.type === r)) {
     // Redirect to appropriate dashboard based on actual roles
-    if (user.roles?.includes('admin')) return <Navigate to="/admin" replace />;
-    if (user.roles?.includes('delivery')) return <Navigate to="/delivery" replace />;
-    if (user.roles?.includes('restaurant')) return <Navigate to="/restaurant" replace />;
+    if (user.type === 'admin') return <Navigate to="/admin" replace />;
+    if (user.type === 'delivery') return <Navigate to="/delivery" replace />;
+    if (user.type === 'restaurant') return <Navigate to="/restaurant" replace />;
     return <Navigate to="/" replace />;
   }
 

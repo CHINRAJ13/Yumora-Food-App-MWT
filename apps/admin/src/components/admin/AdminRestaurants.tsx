@@ -243,7 +243,7 @@ const AdminRestaurants = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -258,7 +258,9 @@ const AdminRestaurants = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+                {/* Form Column */}
+                <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
                     Name
@@ -405,6 +407,51 @@ const AdminRestaurants = () => {
                   {editingId ? "Update Restaurant" : "Create Restaurant"}
                 </button>
               </form>
+
+                {/* Preview Column */}
+                <div className="hidden md:flex flex-col gap-4 sticky top-0">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Live Preview</h4>
+                  <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+                    <div className="relative h-40 bg-gray-100 overflow-hidden">
+                      <img
+                        src={form.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400"}
+                        alt={form.name || "Preview"}
+                        className="w-full h-full object-cover"
+                        onError={(e: any) => {
+                          e.target.src = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400";
+                        }}
+                      />
+                      {form.isVeg && (
+                        <span className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full flex items-center gap-1">
+                          <Leaf className="w-3 h-3" /> Veg
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-black text-gray-900 text-lg truncate">
+                        {form.name || "Restaurant Name"}
+                      </h3>
+                      <p className="text-xs text-gray-400 font-medium mt-1 truncate">
+                        {form.cuisines || "Cuisines"}
+                      </p>
+                      <div className="flex items-center gap-4 mt-3 text-xs font-bold text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          {form.rating || "0"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          {form.deliveryTime || "0 min"}
+                        </span>
+                        <span>₹{form.priceForTwo || "0"} for two</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                     <p className="text-xs font-medium text-blue-600">This is exactly how your restaurant will appear to customers. Verify all details before saving.</p>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

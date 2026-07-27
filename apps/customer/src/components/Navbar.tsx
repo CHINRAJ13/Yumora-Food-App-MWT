@@ -22,13 +22,13 @@ const Navbar = () => {
 
   // Add role-specific links
   const roleLinks = [];
-  if (user?.roles?.includes('delivery')) {
+  if (user?.type === 'delivery') {
     roleLinks.push({ to: "/delivery", label: "Deliveries", icon: Bike });
   }
-  if (user?.roles?.includes('admin')) {
+  if (user?.type === 'admin') {
     roleLinks.push({ to: "/admin", label: "Admin", icon: LayoutDashboard });
   }
-  if (user?.roles?.includes('restaurant')) {
+  if (user?.type === 'restaurant') {
     roleLinks.push({ to: "/restaurant", label: "Dashboard", icon: LayoutDashboard });
   }
 
