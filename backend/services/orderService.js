@@ -9,32 +9,7 @@ export const createOrderService = async (orderData) => {
   const order = new Order(orderData);
   await order.save();
 
-  // Assign nearest online delivery rider based on restaurant location
-  try {
-    const restaurant = await Restaurant.findOne({ id: order.restaurantId });
-    if (restaurant?.location?.coordinates?.length === 2) {
-      const nearestDelivery = await DeliveryPartner.findOne({
-        availability: true,
-        status: { $in: ['approved', 'active'] },
-        location: {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: restaurant.location.coordinates
-            },
-            $maxDistance: 5000 // 5km radius
-          }
-        }
-      });
-      if (nearestDelivery) {
-        order.deliveryPersonId = nearestDelivery._id;
-        order.deliveryPersonName = nearestDelivery.name || nearestDelivery.email;
-        await order.save();
-      }
-    }
-  } catch (err) {
-    console.error('Error assigning delivery rider:', err);
-  }
+
 
   // Notifications (Async)
   const deliverTime = "35-45 mins";
