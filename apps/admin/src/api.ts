@@ -111,3 +111,8 @@ export const updateRestaurantProfile = (formData: FormData) => api.patch("/resta
 export const getUserProfile = () => api.get("/users/me");
 export const updateUserProfile = (data: { name?: string; phone?: string; deliveryDetails?: { vehicleNumber?: string; licenseNumber?: string; vehicleType?: string } }) => api.patch("/users/updateMe", data);
 export const updatePassword = (data: any) => api.patch("/users/updateMyPassword", data);
+
+// Super Admin - Admin Management
+export const getAdmins = () => api.get("/admin/admins");
+export const createAdmin = (data: any) => api.post("/admin/admins", data);
+export const updateAdminPermissions = (id: string, data: any) => api.patch(`/admin/admins/${id}/permissions`, data);

@@ -27,6 +27,8 @@ const adminSchema = new mongoose.Schema({
       'monitor_payments', 
       'manage_approvals',
       'manage_users',
+      'manage_restaurants',
+      'manage_catalog',
       'view_analytics',
       'super_admin'
     ],

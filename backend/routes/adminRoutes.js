@@ -8,9 +8,10 @@ import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant, verifyRestaurant,
   getAllUsers, updateUserRole, updateUserStatus,
   getAllCategories, createCategory, deleteCategory,
-  getAllBanners, createBanner, deleteBanner
+  getAllBanners, createBanner, deleteBanner,
+  getAdminUsers, createAdminUser, updateAdminPermissions
 } from '../controllers/adminController.js';
-import { protect, restrictTo } from '../middleware/auth.js';
+import { protect, restrictTo, requireAdminPermission } from '../middleware/auth.js';
 import { uploadRestaurant, uploadCategory, uploadBanner } from '../middleware/upload.js';
 
 const router = express.Router();
@@ -19,38 +20,42 @@ const router = express.Router();
 router.use(protect);
 router.use(restrictTo('admin'));
 
-// Stats
-router.get('/stats', getStats);
+// Stats (allow super_admin or view_analytics)
+router.get('/stats', requireAdminPermission('view_analytics'), getStats);
 
-// Orders
-router.get('/orders', getAllOrders);
-router.patch('/orders/:id', updateOrder);
-router.patch('/orders/:id/assign', assignDeliveryPerson);
+// Orders (allow monitor_orders)
+router.get('/orders', requireAdminPermission('monitor_orders'), getAllOrders);
+router.patch('/orders/:id', requireAdminPermission('monitor_orders'), updateOrder);
+router.patch('/orders/:id/assign', requireAdminPermission('monitor_orders'), assignDeliveryPerson);
 
-// Delivery Persons
+// Delivery Persons (needed for orders/restaurants)
 router.get('/delivery-persons', getDeliveryPersons);
 
-// Restaurants
-router.get('/restaurants', getAllRestaurants);
-router.post('/restaurants', uploadRestaurant.single('image'), createRestaurant);
-router.put('/restaurants/:id', uploadRestaurant.single('image'), updateRestaurant);
-router.delete('/restaurants/:id', deleteRestaurant);
-router.patch('/restaurants/:id/verify', verifyRestaurant);
+// Restaurants (allow manage_restaurants)
+router.get('/restaurants', requireAdminPermission('manage_restaurants'), getAllRestaurants);
+router.post('/restaurants', requireAdminPermission('manage_restaurants'), uploadRestaurant.single('image'), createRestaurant);
+router.put('/restaurants/:id', requireAdminPermission('manage_restaurants'), uploadRestaurant.single('image'), updateRestaurant);
+router.delete('/restaurants/:id', requireAdminPermission('manage_restaurants'), deleteRestaurant);
+router.patch('/restaurants/:id/verify', requireAdminPermission('manage_restaurants'), verifyRestaurant);
 
-// Users
-router.get('/users', getAllUsers);
-router.patch('/users/:id/role', updateUserRole);
-router.patch('/users/:id/status', updateUserStatus);
+// Users (allow manage_users or manage_approvals)
+router.get('/users', requireAdminPermission('manage_users', 'manage_approvals'), getAllUsers);
+router.patch('/users/:id/role', requireAdminPermission('manage_users', 'manage_approvals'), updateUserRole);
+router.patch('/users/:id/status', requireAdminPermission('manage_users', 'manage_approvals'), updateUserStatus);
 
-// Categories
-router.get('/categories', getAllCategories);
-router.post('/categories', uploadCategory.single('image'), createCategory);
-router.delete('/categories/:id', deleteCategory);
+// Categories & Banners (allow manage_catalog)
+router.get('/categories', requireAdminPermission('manage_catalog'), getAllCategories);
+router.post('/categories', requireAdminPermission('manage_catalog'), uploadCategory.single('image'), createCategory);
+router.delete('/categories/:id', requireAdminPermission('manage_catalog'), deleteCategory);
 
-// Banners
-router.get('/banners', getAllBanners);
-router.post('/banners', uploadBanner.single('image'), createBanner);
-router.delete('/banners/:id', deleteBanner);
+router.get('/banners', requireAdminPermission('manage_catalog'), getAllBanners);
+router.post('/banners', requireAdminPermission('manage_catalog'), uploadBanner.single('image'), createBanner);
+router.delete('/banners/:id', requireAdminPermission('manage_catalog'), deleteBanner);
+
+// Admin Management (allow super_admin only)
+router.get('/admins', requireAdminPermission('super_admin'), getAdminUsers);
+router.post('/admins', requireAdminPermission('super_admin'), createAdminUser);
+router.patch('/admins/:id/permissions', requireAdminPermission('super_admin'), updateAdminPermissions);
 
 export default router;
 

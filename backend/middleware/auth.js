@@ -96,13 +96,18 @@ export const restrictTo = (...roles) => {
   };
 };
 
-export const requireAdminPermission = (permission) => {
+export const requireAdminPermission = (...permissions) => {
   return (req, res, next) => {
     if (req.userType !== 'admin') {
       return next(new AppError('Access denied. Admins only.', 403));
     }
     
-    if (req.user.permissions.includes('super_admin') || req.user.permissions.includes(permission)) {
+    if (req.user.permissions.includes('super_admin')) {
+      return next();
+    }
+
+    const hasPermission = permissions.some(p => req.user.permissions.includes(p));
+    if (hasPermission) {
       return next();
     }
 

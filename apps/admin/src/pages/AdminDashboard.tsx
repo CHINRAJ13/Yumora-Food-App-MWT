@@ -9,6 +9,7 @@ import AdminApprovals from "@/components/admin/AdminApprovals";
 import AdminCatalog from "@/components/admin/AdminCatalog";
 import * as api from "@/api";
 import { motion } from "framer-motion";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   BarChart3,
   ShoppingBag,
@@ -19,25 +20,38 @@ import {
   Menu,
   X,
   ShieldAlert,
-  Bell
+  Bell,
+  ShieldCheck
 } from "lucide-react";
+import AdminManagement from "@/components/admin/AdminManagement";
 
-type Tab = "overview" | "orders" | "restaurants" | "users" | "approvals" | "catalog";
+type Tab = "overview" | "orders" | "restaurants" | "users" | "approvals" | "catalog" | "admins";
 
-const tabs: { id: Tab; label: string; icon: any }[] = [
-  { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "orders", label: "Orders", icon: ShoppingBag },
-  { id: "restaurants", label: "Restaurants", icon: ChefHat },
-  { id: "users", label: "Users", icon: Users },
-  { id: "approvals", label: "Approvals", icon: ShieldAlert },
-  { id: "catalog", label: "Catalog", icon: Tag },
+const ALL_TABS: { id: Tab; label: string; icon: any; permission?: string }[] = [
+  { id: "overview", label: "Overview", icon: BarChart3 }, // visible to all by default
+  { id: "orders", label: "Orders", icon: ShoppingBag, permission: 'monitor_orders' },
+  { id: "restaurants", label: "Restaurants", icon: ChefHat, permission: 'manage_restaurants' },
+  { id: "users", label: "Users", icon: Users, permission: 'manage_users' },
+  { id: "approvals", label: "Approvals", icon: ShieldAlert, permission: 'manage_approvals' },
+  { id: "catalog", label: "Catalog", icon: Tag, permission: 'manage_catalog' },
+  { id: "admins", label: "Admins", icon: ShieldCheck, permission: 'super_admin' },
 ];
 
 const AdminDashboard = () => {
+  const { user } = useAuthStore();
+  const userPermissions = user?.permissions || [];
+  const isSuperAdmin = userPermissions.includes('super_admin');
+
+  const tabs = ALL_TABS.filter(tab => {
+    if (isSuperAdmin) return true;
+    if (!tab.permission) return true;
+    return userPermissions.includes(tab.permission);
+  });
+
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get("tab") as Tab;
   const isValidTab = tabs.some(t => t.id === urlTab);
-  const activeTab = isValidTab ? urlTab : "overview";
+  const activeTab = isValidTab ? urlTab : tabs[0]?.id || "overview";
   
   const setActiveTab = (tabId: Tab) => {
     setSearchParams({ tab: tabId }, { replace: true });
@@ -46,12 +60,16 @@ const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
+  const canViewApprovals = isSuperAdmin || userPermissions.includes('manage_users') || userPermissions.includes('manage_approvals');
+
   useEffect(() => {
-    fetchPendingCount();
-    // Refresh count every 2 minutes
-    const interval = setInterval(fetchPendingCount, 120000);
-    return () => clearInterval(interval);
-  }, []);
+    if (canViewApprovals) {
+      fetchPendingCount();
+      // Refresh count every 2 minutes
+      const interval = setInterval(fetchPendingCount, 120000);
+      return () => clearInterval(interval);
+    }
+  }, [canViewApprovals]);
 
   const fetchPendingCount = async () => {
     try {
@@ -77,6 +95,8 @@ const AdminDashboard = () => {
         return <AdminApprovals />;
       case "catalog":
         return <AdminCatalog />;
+      case "admins":
+        return <AdminManagement />;
       default:
         return <AdminOverview />;
     }

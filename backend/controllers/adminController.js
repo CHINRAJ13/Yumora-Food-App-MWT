@@ -325,3 +325,54 @@ export const deleteBanner = asyncHandler(async (req, res, next) => {
   if (!banner) return next(new AppError('Banner not found', 404));
   sendResponse(res, 200, 'Banner deleted', null);
 });
+
+// --- Admins Management (Super Admin Only) ---
+export const getAdminUsers = asyncHandler(async (req, res, next) => {
+  const admins = await Admin.find().select('-password').sort('-createdAt');
+  sendResponse(res, 200, 'Admins retrieved successfully', admins);
+});
+
+export const createAdminUser = asyncHandler(async (req, res, next) => {
+  const { name, email, password, permissions } = req.body;
+  if (!name || !email || !password) {
+    return next(new AppError('Name, email, and password are required', 400));
+  }
+  
+  const existingAdmin = await Admin.findOne({ email });
+  if (existingAdmin) {
+    return next(new AppError('Admin with this email already exists', 400));
+  }
+  
+  const newAdmin = await Admin.create({
+    name,
+    email,
+    password,
+    permissions: permissions || [],
+    status: 'active'
+  });
+  
+  newAdmin.password = undefined;
+  sendResponse(res, 201, 'Admin created successfully', newAdmin);
+});
+
+export const updateAdminPermissions = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { permissions, status } = req.body;
+  
+  if (id === req.user.id) {
+    return next(new AppError('You cannot update your own permissions/status here', 400));
+  }
+  
+  const updateData = {};
+  if (permissions !== undefined) updateData.permissions = permissions;
+  if (status !== undefined) updateData.status = status;
+  
+  const updatedAdmin = await Admin.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).select('-password');
+  
+  if (!updatedAdmin) {
+    return next(new AppError('Admin not found', 404));
+  }
+  
+  sendResponse(res, 200, 'Admin updated successfully', updatedAdmin);
+});
+

@@ -19,13 +19,12 @@ import {
   ChefHat
 } from "lucide-react";
 
-type RoleTab = "customer" | "restaurant" | "delivery" | "admin";
+type RoleTab = "customer" | "restaurant" | "delivery";
 
 const roleTabs: { id: RoleTab; label: string; icon: any }[] = [
   { id: "customer", label: "Customers", icon: UserIcon },
   { id: "restaurant", label: "Restaurants", icon: ChefHat },
   { id: "delivery", label: "Delivery Riders", icon: Truck },
-  { id: "admin", label: "Admins", icon: ShieldCheck },
 ];
 
 const statusBadge: Record<string, { bg: string; text: string; icon: any }> = {
