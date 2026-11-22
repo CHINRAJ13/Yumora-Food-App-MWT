@@ -68,6 +68,8 @@ export const deleteAdminRestaurant = (id: string) => api.delete(`/admin/restaura
 export const getAdminUsers = () => api.get("/admin/users");
 export const updateAdminUserRole = (id: string, data: { roles: string[]; restaurantId?: string }) => api.patch(`/admin/users/${id}/role`, data);
 export const updateAdminUserStatus = (id: string, status: string) => api.patch(`/admin/users/${id}/status`, { status });
+export const updateAdminUserAvailability = (id: string, availability: boolean) => api.patch(`/admin/users/${id}/availability`, { availability });
+export const updateAdminRestaurantAvailability = (id: string, availability: boolean) => api.patch(`/admin/restaurants/${id}/availability`, { availability });
 
 export const getAdminCategories = () => api.get("/admin/categories");
 export const createAdminCategory = (data: any) => api.post("/admin/categories", data);
@@ -116,3 +118,12 @@ export const updatePassword = (data: any) => api.patch("/users/updateMyPassword"
 export const getAdmins = () => api.get("/admin/admins");
 export const createAdmin = (data: any) => api.post("/admin/admins", data);
 export const updateAdminPermissions = (id: string, data: any) => api.patch(`/admin/admins/${id}/permissions`, data);
+
+// Admin - Payment & Financial Management
+export const getAdminPaymentOverview = () => api.get("/admin/payments/overview");
+export const getAdminPaymentTransactions = (params?: any) => api.get("/admin/payments/transactions", { params });
+export const getAdminPaymentRefunds = (params?: any) => api.get("/admin/payments/refunds", { params });
+export const getAdminPaymentSettlements = (params?: any) => api.get("/admin/payments/settlements", { params });
+export const getAdminPayouts = (status?: string) => api.get(`/admin/payments/payouts${status ? `?status=${status}` : ''}`);
+export const processAdminPayout = (id: string, data: { status: string; adminComment?: string; transactionReference?: string }) =>
+  api.patch(`/admin/payments/payouts/${id}`, data);

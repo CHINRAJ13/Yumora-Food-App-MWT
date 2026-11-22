@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bike, Package, Clock, History, RefreshCw, LogOut, MapPin as MapPinIcon } from "lucide-react";
+import { Bike, Package, Clock, History, RefreshCw, LogOut, MapPin as MapPinIcon, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import DeliveryStats from "@/components/delivery/DeliveryStats";
 import DeliveryOrderCard from "@/components/delivery/DeliveryOrderCard";
 import DeliveryActiveOrder from "@/components/delivery/DeliveryActiveOrder";
+import DeliveryWallet from "@/components/delivery/DeliveryWallet";
 import * as api from "@/api";
 import { socketService } from "@/services/socket";
 import { useAuthStore } from "@/store/useAuthStore";
 
-type Tab = "available" | "active" | "history";
+type Tab = "available" | "active" | "history" | "wallet";
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: "available", label: "Available", icon: Package },
   { id: "active", label: "Active", icon: Bike },
   { id: "history", label: "History", icon: History },
+  { id: "wallet", label: "Wallet & Payouts", icon: Wallet },
 ];
 
 const DeliveryDashboard = () => {
@@ -41,34 +43,41 @@ const DeliveryDashboard = () => {
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [availableRes, activeRes, historyRes, statsRes]: any[] = await Promise.all([
+      const [availableRes, activeRes, historyRes, statsRes, profileRes]: any[] = await Promise.all([
         api.getAvailableOrders(),
         api.getMyActiveDeliveries(),
         api.getMyDeliveryHistory(),
         api.getDeliveryStats(),
+        api.getUserProfile().catch(() => null),
       ]);
 
       if (availableRes.status === "success") setAvailableOrders(availableRes.data);
       if (activeRes.status === "success") setActiveDeliveries(activeRes.data);
       if (historyRes.status === "success") setDeliveryHistory(historyRes.data);
       if (statsRes.status === "success") setStats(statsRes.data);
+
+      if (profileRes?.status === "success" && profileRes.data) {
+        const liveAvailability = profileRes.data.availability ?? profileRes.data.deliveryProfile?.availability ?? false;
+        setUser({ ...profileRes.data, availability: liveAvailability });
+      }
     } catch (err: any) {
       console.error("Delivery fetch error:", err);
       toast.error(err.message || "Failed to fetch delivery data");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setUser]);
 
   const handleToggleAvailability = async () => {
     if (!user) return;
     try {
       setProcessing('availability');
-      const newAvailability = !user.availability;
-      await api.updateDeliveryStatus(newAvailability);
-      // Optimistically update the auth store without extra fetch
-      setUser({ ...user, availability: newAvailability });
-      toast.success('Availability updated');
+      const currentAvailability = !!user.availability;
+      const targetAvailability = !currentAvailability;
+      const res: any = await api.updateDeliveryStatus(targetAvailability);
+      const updatedAvailability = res?.data?.availability !== undefined ? res.data.availability : targetAvailability;
+      setUser({ ...user, availability: updatedAvailability });
+      toast.success(updatedAvailability ? 'You are now Online! Ready for deliveries.' : 'You are now Offline.');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update availability');
     } finally {
@@ -95,6 +104,14 @@ const DeliveryDashboard = () => {
     // Another rider took an order
     socketService.onOrderTaken(({ orderId }) => {
       setAvailableOrders((prev) => prev.filter((o) => o._id !== orderId));
+    });
+
+    // Order was cancelled
+    socketService.onOrderCancelled(({ orderId }) => {
+      setAvailableOrders((prev) => prev.filter((o) => o._id !== orderId));
+      setActiveDeliveries((prev) => prev.filter((o) => o._id !== orderId));
+      toast.info(`Order #${orderId.substring(orderId.length - 6).toUpperCase()} was cancelled`);
+      fetchData(false);
     });
 
     return () => {
@@ -144,6 +161,10 @@ const DeliveryDashboard = () => {
   };
 
   const handleAccept = async (orderId: string) => {
+    if (!user?.availability) {
+      toast.warning("You are currently Offline. Turn on your availability to accept orders.");
+      return;
+    }
     setProcessing(orderId);
     try {
       const res: any = await api.acceptDeliveryOrder(orderId);
@@ -225,24 +246,33 @@ const DeliveryDashboard = () => {
               Welcome back, <span className="text-primary font-bold">{user?.name || "Rider"}</span>
             </p>
           </div>
-          <button
-            onClick={() => fetchData()}
-            disabled={loading}
-            className="p-3 bg-white rounded-2xl shadow-sm text-gray-400 hover:text-primary hover:shadow-md transition-all active:scale-95 border border-gray-100"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
-          </button>
-                    {user?.type === "delivery" && user?.status !== "rejected" && user?.status !== "suspended" && (
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleToggleAvailability}
-              disabled={processing === 'availability'}
-              className={`p-3 rounded-2xl shadow-sm transition-all active:scale-95 border border-gray-100 ${processing === 'availability' ? 'opacity-50 cursor-not-allowed' : ''} ${user?.availability ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-800' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800'}`}
-              title={user?.availability ? 'Go Offline' : 'Go Online'}
+              onClick={() => fetchData()}
+              disabled={loading}
+              className="p-3 bg-white rounded-2xl shadow-sm text-gray-400 hover:text-primary hover:shadow-md transition-all active:scale-95 border border-gray-100"
+              title="Refresh"
             >
-              {user?.availability ? 'Online' : 'Offline'}
+              <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
             </button>
-          )}
+            {user?.type === "delivery" && user?.status !== "rejected" && user?.status !== "suspended" && (
+              <button
+                onClick={handleToggleAvailability}
+                disabled={processing === 'availability'}
+                className={`px-4 py-2.5 rounded-2xl font-bold text-sm shadow-sm transition-all active:scale-95 border flex items-center gap-2 ${
+                  processing === 'availability' ? 'opacity-50 cursor-not-allowed' : ''
+                } ${
+                  user?.availability
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                }`}
+                title={user?.availability ? 'Click to Go Offline' : 'Click to Go Online'}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${user?.availability ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{processing === 'availability' ? 'Updating...' : user?.availability ? 'Online' : 'Offline'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Live Tracking Indicator */}
@@ -271,7 +301,8 @@ const DeliveryDashboard = () => {
             const count =
               tab.id === "available" ? availableOrders.length :
                 tab.id === "active" ? activeDeliveries.length :
-                  deliveryHistory.length;
+                  tab.id === "history" ? deliveryHistory.length :
+                    undefined;
 
             return (
               <button
@@ -317,6 +348,27 @@ const DeliveryDashboard = () => {
             {/* Available Orders */}
             {activeTab === "available" && (
               <div>
+                {!user?.availability && (
+                  <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                        <Bike className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-amber-900">You are currently Offline</p>
+                        <p className="text-xs font-medium text-amber-700">Turn your status to Online to accept delivery orders.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggleAvailability}
+                      disabled={processing === 'availability'}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 shrink-0"
+                    >
+                      Go Online
+                    </button>
+                  </div>
+                )}
+
                 {loading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
@@ -401,6 +453,12 @@ const DeliveryDashboard = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === "wallet" && (
+              <div>
+                <DeliveryWallet />
               </div>
             )}
           </motion.div>

@@ -74,6 +74,7 @@ export const addOrderReview = (orderId: string, data: any) => api.post(`/orders/
 export const getMyOrders = () => api.get('/orders/my-orders');
 export const getOrderById = (id: string) => api.get(`/orders/single/${id}`);
 export const updateOrderStatus = (id: string, status: string) => api.patch(`/orders/update/${id}`, { status });
+export const cancelOrder = (id: string, reason?: string) => api.post(`/orders/${id}/cancel`, { reason });
 
 // Admin Methods
 export const getAdminStats = () => api.get("/admin/stats");

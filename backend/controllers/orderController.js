@@ -1,3 +1,4 @@
+import Restaurant from '../models/Restaurant.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
@@ -21,7 +22,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     paymentStatus,
     restaurantId,
     restaurantName,
-    location
+    location,
+    pricing
   } = req.body;
 
   // 1. Validation
@@ -29,16 +31,64 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     return next(new AppError('No items in order', 400));
   }
 
+  // Check if restaurant is accepting orders
+  const targetRestaurantId = restaurantId || items[0]?.restaurantId;
+  if (targetRestaurantId) {
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(targetRestaurantId);
+    const query = isMongoId ? { $or: [{ id: targetRestaurantId }, { _id: targetRestaurantId }] } : { id: targetRestaurantId };
+    const restaurant = await Restaurant.findOne(query);
+    if (restaurant && restaurant.acceptsOrders === false) {
+      return next(new AppError(`${restaurant.name || 'This restaurant'} is currently offline and not accepting orders.`, 400));
+    }
+  }
+
+  // Calculate pricing breakdown
+  const foodSubtotal = pricing?.foodSubtotal !== undefined
+    ? Number(pricing.foodSubtotal)
+    : items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const packagingFee = pricing?.packagingFee !== undefined ? Number(pricing.packagingFee) : 20;
+  const deliveryFee = pricing?.deliveryFee !== undefined ? Number(pricing.deliveryFee) : (foodSubtotal > 199 ? 0 : 30);
+  const platformFee = pricing?.platformFee !== undefined ? Number(pricing.platformFee) : 5;
+  const tax = pricing?.tax !== undefined ? Number(pricing.tax) : Math.round((foodSubtotal + packagingFee) * 0.05);
+  const discount = pricing?.discount !== undefined ? Number(pricing.discount) : 0;
+  const finalTotal = totalAmount || Math.round(foodSubtotal + packagingFee + deliveryFee + platformFee + tax - discount);
+
+  // Settlement Split (Platform Commission e.g. 10% on food items)
+  const commissionRate = 10;
+  const platformCommission = Math.round((foodSubtotal * commissionRate) / 100);
+  const restaurantAmount = foodSubtotal + packagingFee - platformCommission;
+  const deliveryPartnerAmount = deliveryFee > 0 ? deliveryFee : 30;
+  const platformProfit = platformFee + platformCommission;
+
   // 2. Prepare Order Data (userId from auth middleware)
   const orderData = {
     userId: req.user?._id || "guest",
     customerName: req.user?.name || "Guest User",
     items,
-    totalAmount,
+    totalAmount: finalTotal,
+    pricing: {
+      foodSubtotal,
+      packagingFee,
+      deliveryFee,
+      platformFee,
+      tax,
+      discount,
+      totalAmount: finalTotal
+    },
+    settlement: {
+      commissionRate,
+      platformCommission,
+      restaurantAmount,
+      deliveryPartnerAmount,
+      platformProfit,
+      isSettled: false,
+      settledAt: null
+    },
     address,
-    paymentMethod: paymentMethod || "cod",
+    paymentMethod: paymentMethod || "online",
     paymentId,
-    paymentStatus: paymentStatus || (paymentMethod === "cod" ? "COD" : "Pending"),
+    paymentStatus: paymentStatus || "Success",
     email: email || req.user?.email,
     phone: phone || req.user?.phone,
     restaurantId: restaurantId || items[0]?.restaurantId || null,
@@ -139,3 +189,20 @@ export const addOrderReview = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, 200, 'Review submitted successfully', order);
 });
+
+/**
+ * @desc    Cancel order (Customer / Restaurant / Admin)
+ * @route   POST /api/orders/:id/cancel
+ * @access  Private
+ */
+export const cancelOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const userType = req.userType || (req.user?.role === 'admin' ? 'admin' : 'customer');
+
+  const { cancelOrderService } = await import('../services/cancellationService.js');
+  const cancelledOrder = await cancelOrderService(id, req.user, userType, reason);
+
+  sendResponse(res, 200, 'Order cancelled and refund processed', cancelledOrder);
+});
+

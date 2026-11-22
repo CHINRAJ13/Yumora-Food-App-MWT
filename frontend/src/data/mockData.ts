@@ -23,6 +23,8 @@ export interface Restaurant {
   isVeg: boolean;
   offer?: string;
   menu: MenuItem[];
+  acceptsOrders?: boolean;
+  availability?: boolean;
 }
 
 export interface CartItem extends MenuItem {

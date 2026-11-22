@@ -6,9 +6,10 @@ interface MenuItemCardProps {
   item: any;
   restaurantId: string;
   restaurantName: string;
+  isOffline?: boolean;
 }
 
-const MenuItemCard = ({ item, restaurantId, restaurantName }: MenuItemCardProps) => {
+const MenuItemCard = ({ item, restaurantId, restaurantName, isOffline = false }: MenuItemCardProps) => {
   const { items, addItem, updateQuantity } = useCartStore();
   const cartItem = items.find((i) => i.id === item.id);
 
@@ -16,7 +17,9 @@ const MenuItemCard = ({ item, restaurantId, restaurantName }: MenuItemCardProps)
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-row items-stretch overflow-visible hover:shadow-md transition-shadow duration-200"
+      className={`bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-row items-stretch overflow-visible transition-shadow duration-200 ${
+        isOffline ? "opacity-90 hover:shadow-sm" : "hover:shadow-md"
+      }`}
     >
       {/* LEFT: Text content */}
       <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
@@ -75,7 +78,17 @@ const MenuItemCard = ({ item, restaurantId, restaurantName }: MenuItemCardProps)
         {/* ADD / Qty button */}
         <div className="absolute -bottom-3 w-[64px] sm:w-[76px]">
           <AnimatePresence mode="wait">
-            {cartItem ? (
+            {isOffline ? (
+              <motion.div
+                key="offline"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="w-full h-7 bg-gray-100 text-gray-400 font-extrabold text-[10px] rounded-lg shadow-sm border border-gray-200 flex items-center justify-center uppercase tracking-wider cursor-not-allowed select-none"
+                title="Restaurant is currently offline"
+              >
+                Closed
+              </motion.div>
+            ) : cartItem ? (
               <motion.div
                 key="qty"
                 initial={{ scale: 0.8 }}

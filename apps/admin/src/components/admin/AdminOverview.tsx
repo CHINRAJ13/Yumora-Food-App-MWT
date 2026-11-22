@@ -22,13 +22,20 @@ const AdminOverview = () => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       <StatsCard 
-        title="Total Revenue" 
-        value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`} 
+        title="Platform Profit" 
+        value={`₹${stats?.platformNetRevenue?.toLocaleString() || 0}`} 
         icon={IndianRupee} 
         color="text-emerald-600"
         bgColor="bg-emerald-50"
+      />
+      <StatsCard 
+        title="Gross Order Value" 
+        value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`} 
+        icon={IndianRupee} 
+        color="text-teal-600"
+        bgColor="bg-teal-50"
       />
       <StatsCard 
         title="Total Orders" 

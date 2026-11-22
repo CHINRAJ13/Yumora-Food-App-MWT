@@ -33,6 +33,7 @@ import deliveryRoutes from './routes/deliveryRoutes.js';
 import restaurantDashRoutes from './routes/restaurantDashRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
@@ -141,6 +142,7 @@ app.use('/api/delivery', deliveryRoutes);
 app.use('/api/restaurant-dash', restaurantDashRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // 3. ERROR HANDLING
 app.all('*', (req, res, next) => {

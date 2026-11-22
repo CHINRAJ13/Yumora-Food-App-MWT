@@ -62,10 +62,10 @@ const RestaurantSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  aadharNumber: { type: String, required: true },
-  aadharImage: { type: String, required: true },
-  fssaiNumber: { type: String, required: true },
-  fssaiCertificate: { type: String, required: true }
+  aadharNumber: { type: String, default: '' },
+  aadharImage: { type: String, default: '' },
+  fssaiNumber: { type: String, default: '' },
+  fssaiCertificate: { type: String, default: '' }
 }, { timestamps: true });
 
 // 2dsphere index for geolocation queries

@@ -79,11 +79,18 @@ class SocketService {
     }
   }
 
+  onOrderCancelled(callback: (data: { orderId: string, order: any }) => void) {
+    if (this.socket) {
+      this.socket.on('order_cancelled', callback);
+    }
+  }
+
   offDeliveryEvents() {
     if (this.socket) {
       this.socket.off('new_available_order');
       this.socket.off('order_taken');
       this.socket.off('order_accepted');
+      this.socket.off('order_cancelled');
     }
   }
 

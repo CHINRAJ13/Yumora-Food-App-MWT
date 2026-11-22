@@ -117,8 +117,18 @@ const RestaurantDetail = () => {
         <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-white rounded-3xl p-6 shadow-xl border border-white/20 mb-8"
+          className={`bg-white rounded-3xl p-6 shadow-xl border border-white/20 mb-8 ${restaurant.acceptsOrders === false ? "filter contrast-95" : ""}`}
         >
+          {restaurant.acceptsOrders === false && (
+            <div className="mb-4 p-3.5 bg-gray-900 text-white rounded-2xl flex items-center justify-between text-xs font-bold shadow-md">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+                <span>Currently Offline — Not accepting orders right now</span>
+              </div>
+              <span className="text-[10px] uppercase font-black tracking-widest text-gray-400">Closed</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-start gap-4 mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-gray-500 text-sm font-medium">{restaurant.cuisines?.join(", ")}</p>
@@ -214,7 +224,12 @@ const RestaurantDetail = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
               >
-                <MenuItemCard item={item} restaurantId={restaurant.id} restaurantName={restaurant.name} />
+                <MenuItemCard 
+                  item={item} 
+                  restaurantId={restaurant.id} 
+                  restaurantName={restaurant.name}
+                  isOffline={restaurant.acceptsOrders === false}
+                />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -222,7 +237,7 @@ const RestaurantDetail = () => {
       </div>
 
       <AnimatePresence>
-        {totalItems > 0 && (
+        {totalItems > 0 && restaurant.acceptsOrders !== false && (
           <motion.div
             initial={{ y: 100 }}
             animate={{ y: 0 }}

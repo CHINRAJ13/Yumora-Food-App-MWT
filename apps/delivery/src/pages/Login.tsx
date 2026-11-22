@@ -438,6 +438,28 @@ const Login = () => {
                     </div>
 
 
+                    {role === 'delivery' && (
+                      <div className="space-y-1.5 mb-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Vehicle Type</Label>
+                        <div className="flex gap-2">
+                          {(['Bike', 'Scooter', 'Cycle'] as const).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setVehicleType(t)}
+                              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                vehicleType === t
+                                  ? 'bg-primary text-white border-primary shadow-sm'
+                                  : 'bg-white/60 text-gray-600 border-gray-200 hover:bg-gray-50'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <motion.div initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Vehicle Number</Label>

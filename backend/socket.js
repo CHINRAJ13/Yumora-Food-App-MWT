@@ -10,7 +10,10 @@ const trackingSessions = {};
 export const init = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:8080",
+      origin: (origin, callback) => {
+        // Allow mobile clients (no origin), localhost, LAN IPs, or any origin in development
+        callback(null, true);
+      },
       credentials: true
     }
   });
@@ -29,9 +32,14 @@ export const init = (httpServer) => {
       socket.join('admin_room');
     });
 
-    socket.on('join_delivery', () => {
+    socket.on('join_delivery', (partnerId) => {
       console.log(`Client ${socket.id} joined delivery room`);
       socket.join('delivery_room');
+      if (partnerId) {
+        const personalRoom = `delivery_${partnerId}`;
+        socket.join(personalRoom);
+        console.log(`Client ${socket.id} joined personal delivery room: ${personalRoom}`);
+      }
     });
 
     socket.on('join_restaurant', (restaurantId) => {
@@ -160,6 +168,7 @@ export const emitNewOrder = (order) => {
   if (io) {
     io.to('admin_room').emit('new_order', order);
     if (order.restaurantId) {
+      console.log(`[Socket] 🔔 Emitting new_restaurant_order to room: restaurant_${order.restaurantId} (Order #${order._id})`);
       io.to(`restaurant_${order.restaurantId}`).emit('new_restaurant_order', order);
     }
   }
@@ -176,6 +185,16 @@ export const emitOrderAccepted = (orderId, deliveryPerson) => {
     io.to(orderId).emit('order_accepted', { orderId, deliveryPerson });
     io.to('delivery_room').emit('order_taken', { orderId });
     io.to('admin_room').emit('order_accepted', { orderId, deliveryPerson });
+  }
+};
+
+export const emitOrderAssignedToDriver = (deliveryPersonId, order) => {
+  if (io) {
+    if (deliveryPersonId) {
+      io.to(`delivery_${deliveryPersonId}`).emit('order_assigned', order);
+    }
+    // Also broadcast to delivery_room with target driver ID for synced tracking
+    io.to('delivery_room').emit('order_assigned', { deliveryPersonId, order });
   }
 };
 
@@ -204,3 +223,23 @@ export const emitTrackingEnded = (orderId) => {
     }
   }
 };
+
+/**
+ * Emit order cancelled event across all rooms (customer, restaurant, delivery, admin)
+ */
+export const emitOrderCancelled = (orderId, order) => {
+  if (io) {
+    io.to(orderId).emit('order_cancelled', { orderId, order });
+    io.to(orderId).emit('order_status_update', { status: 'Cancelled', data: order });
+    io.to('admin_room').emit('order_cancelled', { orderId, order });
+    io.to('delivery_room').emit('order_cancelled', { orderId, order });
+    if (order?.restaurantId) {
+      io.to(`restaurant_${order.restaurantId}`).emit('restaurant_order_updated', {
+        orderId,
+        status: 'Cancelled',
+        data: order
+      });
+    }
+  }
+};
+

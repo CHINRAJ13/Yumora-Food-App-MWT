@@ -21,15 +21,18 @@ import {
   X,
   ShieldAlert,
   Bell,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from "lucide-react";
 import AdminManagement from "@/components/admin/AdminManagement";
+import AdminPayments from "@/components/admin/AdminPayments";
 
-type Tab = "overview" | "orders" | "restaurants" | "users" | "approvals" | "catalog" | "admins";
+type Tab = "overview" | "orders" | "payments" | "restaurants" | "users" | "approvals" | "catalog" | "admins";
 
 const ALL_TABS: { id: Tab; label: string; icon: any; permission?: string }[] = [
   { id: "overview", label: "Overview", icon: BarChart3 }, // visible to all by default
   { id: "orders", label: "Orders", icon: ShoppingBag, permission: 'monitor_orders' },
+  { id: "payments", label: "Payments", icon: CreditCard, permission: 'monitor_payments' },
   { id: "restaurants", label: "Restaurants", icon: ChefHat, permission: 'manage_restaurants' },
   { id: "users", label: "Users", icon: Users, permission: 'manage_users' },
   { id: "approvals", label: "Approvals", icon: ShieldAlert, permission: 'manage_approvals' },
@@ -59,8 +62,10 @@ const AdminDashboard = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingPayoutCount, setPendingPayoutCount] = useState(0);
 
   const canViewApprovals = isSuperAdmin || userPermissions.includes('manage_users') || userPermissions.includes('manage_approvals');
+  const canViewPayments = isSuperAdmin || userPermissions.includes('monitor_payments');
 
   useEffect(() => {
     if (canViewApprovals) {
@@ -70,6 +75,23 @@ const AdminDashboard = () => {
       return () => clearInterval(interval);
     }
   }, [canViewApprovals]);
+
+  useEffect(() => {
+    if (canViewPayments) {
+      fetchPendingPayoutCount();
+      const interval = setInterval(fetchPendingPayoutCount, 120000);
+      return () => clearInterval(interval);
+    }
+  }, [canViewPayments]);
+
+  const fetchPendingPayoutCount = async () => {
+    try {
+      const res = await api.getAdminPayouts('pending');
+      setPendingPayoutCount(res.data?.length || 0);
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchPendingCount = async () => {
     try {
@@ -87,6 +109,8 @@ const AdminDashboard = () => {
         return <AdminOverview />;
       case "orders":
         return <AdminOrders />;
+      case "payments":
+        return <AdminPayments />;
       case "restaurants":
         return <AdminRestaurants />;
       case "users":
@@ -141,6 +165,11 @@ const AdminDashboard = () => {
                   {tab.id === "approvals" && pendingCount > 0 && (
                     <span className="ml-auto relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white shadow-lg shadow-orange-200 animate-pulse">
                       {pendingCount}
+                    </span>
+                  )}
+                  {tab.id === "payments" && pendingPayoutCount > 0 && (
+                    <span className="ml-auto relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg shadow-amber-200 animate-pulse">
+                      {pendingPayoutCount}
                     </span>
                   )}
                 </button>
@@ -204,6 +233,11 @@ const AdminDashboard = () => {
                   {tab.id === "approvals" && pendingCount > 0 && (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white shadow-lg shadow-orange-200">
                       {pendingCount}
+                    </span>
+                  )}
+                  {tab.id === "payments" && pendingPayoutCount > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg shadow-amber-200">
+                      {pendingPayoutCount}
                     </span>
                   )}
                 </button>

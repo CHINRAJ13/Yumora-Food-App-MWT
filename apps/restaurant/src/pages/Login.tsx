@@ -33,6 +33,7 @@ const Login = () => {
 
   // Role-specific fields
   const [restaurantName, setRestaurantName] = useState("");
+  const [cuisines, setCuisines] = useState("");
   const [restaurantImage, setRestaurantImage] = useState<File | null>(null);
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -85,6 +86,7 @@ const Login = () => {
         phone: phoneNumber,
         role,
         restaurantName: role === 'restaurant' ? restaurantName : undefined,
+        cuisines: role === 'restaurant' ? cuisines : undefined,
         vehicleNumber: role === 'delivery' ? vehicleNumber : undefined,
         licenseNumber: role === 'delivery' ? licenseNumber : undefined,
         vehicleType: role === 'delivery' ? vehicleType : undefined,
@@ -318,6 +320,15 @@ const Login = () => {
                           onChange={(e) => setRestaurantName(e.target.value)}
                           placeholder="e.g. Royal Cafe"
                           required
+                          className="h-10 bg-orange-50/50 border-orange-200 rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-500 ml-1">Cuisines (comma separated)</Label>
+                        <Input
+                          value={cuisines}
+                          onChange={(e) => setCuisines(e.target.value)}
+                          placeholder="e.g. Biryani, South Indian, Fast Food"
                           className="h-10 bg-orange-50/50 border-orange-200 rounded-xl"
                         />
                       </div>

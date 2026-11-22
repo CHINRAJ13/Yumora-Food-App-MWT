@@ -16,7 +16,9 @@ import {
   Clock,
   Car,
   BadgeCheck,
-  ChefHat
+  ChefHat,
+  Power,
+  Loader2
 } from "lucide-react";
 
 type RoleTab = "customer" | "restaurant" | "delivery";
@@ -39,6 +41,8 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<RoleTab>("customer");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "online" | "offline">("all");
+  const [updatingAvailabilityId, setUpdatingAvailabilityId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -50,7 +54,6 @@ const AdminUsers = () => {
     try {
       const res = await api.getAdminUsers();
       setUsers(res.data);
-      // console.log(users)
     } catch {
       toast.error("Failed to fetch users");
     } finally {
@@ -77,26 +80,92 @@ const AdminUsers = () => {
     }
   };
 
-  const filtered = users.filter(
-    (u) =>
-      u.type === activeTab &&
-      (u.name?.toLowerCase().includes(search.toLowerCase()) ||
-       u.email?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const handleAvailabilityToggle = async (userId: string, current: boolean) => {
+    setUpdatingAvailabilityId(userId);
+    const target = !current;
+    try {
+      await api.updateAdminUserAvailability(userId, target);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === userId ? { ...u, availability: target } : u))
+      );
+      toast.success(
+        activeTab === "restaurant"
+          ? `Restaurant is now ${target ? "Open" : "Closed"}`
+          : `Rider is now ${target ? "Online" : "Offline"}`
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update availability");
+    } finally {
+      setUpdatingAvailabilityId(null);
+    }
+  };
+
+  const tabUsers = users.filter((u) => u.type === activeTab);
+  const onlineCount = tabUsers.filter((u) => !!u.availability).length;
+  const offlineCount = tabUsers.length - onlineCount;
+
+  const filtered = tabUsers.filter((u) => {
+    const matchesSearch =
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      u.restaurantDetails?.name?.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (activeTab === "customer") return true;
+    if (availabilityFilter === "online") return !!u.availability;
+    if (availabilityFilter === "offline") return !u.availability;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
       {/* Search and Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder={`Search ${activeTab}s...`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all w-80 outline-none"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}s...`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all w-72 outline-none shadow-sm"
+            />
+          </div>
+
+          {activeTab !== "customer" && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-white border border-gray-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-gray-700 shadow-sm">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-emerald-700">
+                    {onlineCount} {activeTab === "restaurant" ? "Open" : "Online"}
+                  </span>
+                </span>
+                <span className="text-gray-300">•</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-gray-400" />
+                  <span className="text-gray-500">
+                    {offlineCount} {activeTab === "restaurant" ? "Closed" : "Offline"}
+                  </span>
+                </span>
+              </div>
+
+              <select
+                value={availabilityFilter}
+                onChange={(e) => setAvailabilityFilter(e.target.value as any)}
+                className="text-xs font-bold bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 text-gray-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
+              >
+                <option value="all">All Availability</option>
+                <option value="online">
+                  {activeTab === "restaurant" ? "Open Only" : "Online Only"}
+                </option>
+                <option value="offline">
+                  {activeTab === "restaurant" ? "Closed Only" : "Offline Only"}
+                </option>
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
@@ -153,6 +222,11 @@ const AdminUsers = () => {
                 {activeTab === 'restaurant' && (
                   <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
                     Linked Restaurant
+                  </th>
+                )}
+                {activeTab !== 'customer' && (
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Availability
                   </th>
                 )}
                 <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -229,6 +303,55 @@ const AdminUsers = () => {
                             <p className="text-[10px] text-gray-400 font-medium italic">
                               ID: {user.restaurantDetails?.id || 'None'}
                             </p>
+                          </div>
+                        </td>
+                      )}
+
+                      {activeTab !== 'customer' && (
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${
+                                user.availability
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                                  : "bg-gray-100 text-gray-600 border border-gray-200"
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  user.availability ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                                }`}
+                              />
+                              {activeTab === "restaurant"
+                                ? user.availability ? "Open" : "Closed"
+                                : user.availability ? "Online" : "Offline"}
+                            </span>
+
+                            <button
+                              onClick={() => handleAvailabilityToggle(user._id, !!user.availability)}
+                              disabled={updatingAvailabilityId === user._id}
+                              className={`px-2.5 py-1 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                user.availability
+                                  ? "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                              }`}
+                              title={
+                                user.availability
+                                  ? activeTab === "restaurant" ? "Click to Mark Closed" : "Click to Mark Offline"
+                                  : activeTab === "restaurant" ? "Click to Mark Open" : "Click to Mark Online"
+                              }
+                            >
+                              {updatingAvailabilityId === user._id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Power className="w-3.5 h-3.5" />
+                              )}
+                              <span className="text-[10px]">
+                                {user.availability
+                                  ? activeTab === "restaurant" ? "Close" : "Offline"
+                                  : activeTab === "restaurant" ? "Open" : "Online"}
+                              </span>
+                            </button>
                           </div>
                         </td>
                       )}

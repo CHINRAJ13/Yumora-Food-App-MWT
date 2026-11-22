@@ -7,7 +7,7 @@ export const checkoutSchema = z.object({
   line1: z.string().min(5, "Address line 1 must be at least 5 characters"),
   line2: z.string().optional(),
   pincode: z.string().length(6, "Pincode must be exactly 6 digits"),
-  paymentMethod: z.enum(["cod", "upi", "card"]),
+  paymentMethod: z.enum(["online", "card", "upi", "cod"]).default("online"),
 });
 
 export type CheckoutFormData = z.infer<typeof checkoutSchema>;

@@ -4,6 +4,7 @@ import { Package, TrendingUp, Clock, IndianRupee, Bike } from "lucide-react";
 interface StatsData {
   totalDeliveries: number;
   totalEarnings: number;
+  balance?: number;
   avgDeliveryTime: number;
   todayDeliveries: number;
   todayEarnings: number;
@@ -11,6 +12,14 @@ interface StatsData {
 
 const DeliveryStats = ({ stats, loading }: { stats: StatsData | null; loading: boolean }) => {
   const statCards = [
+    {
+      label: "Wallet Balance",
+      value: `₹${stats?.balance || 0}`,
+      icon: IndianRupee,
+      color: "from-emerald-500 to-teal-500",
+      bgColor: "bg-emerald-50",
+      textColor: "text-emerald-600"
+    },
     {
       label: "Today's Deliveries",
       value: stats?.todayDeliveries || 0,
@@ -22,7 +31,7 @@ const DeliveryStats = ({ stats, loading }: { stats: StatsData | null; loading: b
     {
       label: "Today's Earnings",
       value: `₹${stats?.todayEarnings || 0}`,
-      icon: IndianRupee,
+      icon: TrendingUp,
       color: "from-emerald-500 to-green-500",
       bgColor: "bg-emerald-50",
       textColor: "text-emerald-600"
@@ -34,14 +43,6 @@ const DeliveryStats = ({ stats, loading }: { stats: StatsData | null; loading: b
       color: "from-violet-500 to-purple-500",
       bgColor: "bg-violet-50",
       textColor: "text-violet-600"
-    },
-    {
-      label: "Avg. Time",
-      value: `${stats?.avgDeliveryTime || 0} min`,
-      icon: Clock,
-      color: "from-blue-500 to-cyan-500",
-      bgColor: "bg-blue-50",
-      textColor: "text-blue-600"
     },
     {
       label: "Total Earnings",

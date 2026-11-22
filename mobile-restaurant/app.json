@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Yumora Restaurant Partner",
+    "slug": "mobile-restaurant",
+    "scheme": "yumora-restaurant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.yumora.restaurant",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Yumora Restaurant to access your gallery to upload food dish photos."
+        }
+      ]
+    ]
+  }
+}

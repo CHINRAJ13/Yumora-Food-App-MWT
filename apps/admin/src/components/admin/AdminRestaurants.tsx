@@ -4,6 +4,7 @@ import {
   createAdminRestaurant,
   updateAdminRestaurant,
   deleteAdminRestaurant,
+  updateAdminRestaurantAvailability,
 } from "@/api";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +18,8 @@ import {
   Search,
   ChefHat,
   Leaf,
+  Power,
+  Loader2,
 } from "lucide-react";
 
 const emptyForm = {
@@ -39,6 +42,8 @@ const AdminRestaurants = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "open" | "closed">("all");
+  const [updatingAvailabilityId, setUpdatingAvailabilityId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -119,24 +124,80 @@ const AdminRestaurants = () => {
     }
   };
 
-  const filtered = restaurants.filter((r) =>
-    r.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleToggleAvailability = async (id: string, current: boolean) => {
+    setUpdatingAvailabilityId(id);
+    const target = !current;
+    try {
+      await updateAdminRestaurantAvailability(id, target);
+      setRestaurants((prev) =>
+        prev.map((r) =>
+          (r.id === id || r._id === id) ? { ...r, availability: target } : r
+        )
+      );
+      toast.success(`Restaurant is now ${target ? "Open" : "Closed"}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update restaurant availability");
+    } finally {
+      setUpdatingAvailabilityId(null);
+    }
+  };
+
+  const openCount = restaurants.filter((r) => r.availability !== false).length;
+  const closedCount = restaurants.length - openCount;
+
+  const filtered = restaurants.filter((r) => {
+    const matchesSearch =
+      r.name?.toLowerCase().includes(search.toLowerCase()) ||
+      (r.cuisines || []).some((c: string) =>
+        c.toLowerCase().includes(search.toLowerCase())
+      );
+    if (!matchesSearch) return false;
+    if (availabilityFilter === "open") return r.availability !== false;
+    if (availabilityFilter === "closed") return r.availability === false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search restaurants..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all w-72 outline-none"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search restaurants..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all w-72 outline-none shadow-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-gray-700 shadow-sm">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-emerald-700">{openCount} Open</span>
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                <span className="text-gray-500">{closedCount} Closed</span>
+              </span>
+            </div>
+
+            <select
+              value={availabilityFilter}
+              onChange={(e) => setAvailabilityFilter(e.target.value as any)}
+              className="text-xs font-bold bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 text-gray-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
+            >
+              <option value="all">All Availability</option>
+              <option value="open">Open Only</option>
+              <option value="closed">Closed Only</option>
+            </select>
+          </div>
         </div>
+
         <button
           onClick={openCreate}
           className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
@@ -164,67 +225,141 @@ const AdminRestaurants = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
-            {filtered.map((r) => (
-              <motion.div
-                key={r.id || r._id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden group"
-              >
-                <div className="relative h-40 bg-gray-100 overflow-hidden">
-                  <img
-                    src={r.image}
-                    alt={r.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    onError={(e: any) => {
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400";
-                    }}
-                  />
-                  {r.isVeg && (
-                    <span className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <Leaf className="w-3 h-3" /> Veg
-                    </span>
-                  )}
-                  {/* Action Buttons */}
-                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => openEdit(r)}
-                      className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-50 transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                    </button>
+            {filtered.map((r) => {
+              const resId = r.id || r._id;
+              const isAvailable = r.availability !== false;
+              const isToggling = updatingAvailabilityId === resId;
+
+              return (
+                <motion.div
+                  key={resId}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="relative h-40 bg-gray-100 overflow-hidden">
+                      <img
+                        src={r.image}
+                        alt={r.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e: any) => {
+                          e.target.src =
+                            "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400";
+                        }}
+                      />
+                      {r.isVeg && (
+                        <span className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
+                          <Leaf className="w-3 h-3" /> Veg
+                        </span>
+                      )}
+
+                      {/* Live Availability Pill Badge on Image */}
+                      <span
+                        className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 backdrop-blur-md shadow-md ${
+                          isAvailable
+                            ? "bg-emerald-600/90 text-white"
+                            : "bg-rose-600/90 text-white"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isAvailable ? "bg-white animate-pulse" : "bg-white/70"
+                          }`}
+                        />
+                        {isAvailable ? "Open" : "Closed"}
+                      </span>
+
+                      {/* Action Buttons */}
+                      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleAvailability(resId, isAvailable)}
+                          disabled={isToggling}
+                          title={isAvailable ? "Click to Mark Closed" : "Click to Mark Open"}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+                            isAvailable
+                              ? "bg-white hover:bg-amber-50 text-amber-600"
+                              : "bg-white hover:bg-emerald-50 text-emerald-600"
+                          }`}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Power className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-50 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(resId)}
+                          className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-5">
+                      <h3 className="font-black text-gray-900 text-lg truncate">
+                        {r.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 font-medium mt-1 truncate">
+                        {(r.cuisines || []).join(", ")}
+                      </p>
+                      <div className="flex items-center gap-4 mt-3 text-xs font-bold text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          {r.rating}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          {r.deliveryTime}
+                        </span>
+                        <span>₹{r.priceForTwo} for two</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-black text-gray-900 text-lg truncate">
-                    {r.name}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium mt-1 truncate">
-                    {(r.cuisines || []).join(", ")}
-                  </p>
-                  <div className="flex items-center gap-4 mt-3 text-xs font-bold text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      {r.rating}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {r.deliveryTime}
-                    </span>
-                    <span>₹{r.priceForTwo} for two</span>
+
+                  {/* Card Footer Availability Control */}
+                  <div className="px-5 pb-5">
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isAvailable ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                          }`}
+                        />
+                        <span className="text-xs font-bold text-gray-600">
+                          {isAvailable ? "Open for Orders" : "Closed"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleAvailability(resId, isAvailable)}
+                        disabled={isToggling}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isAvailable
+                            ? "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                            : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                        }`}
+                      >
+                        {isToggling ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Power className="w-3 h-3" />
+                        )}
+                        <span>{isAvailable ? "Close Store" : "Open Store"}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       )}

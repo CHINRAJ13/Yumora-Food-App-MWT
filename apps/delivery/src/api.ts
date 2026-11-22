@@ -130,3 +130,7 @@ export const updateRestaurantProfile = (formData: FormData) => api.patch("/resta
 export const getUserProfile = () => api.get("/users/me");
 export const updateUserProfile = (data: { name?: string; phone?: string; deliveryDetails?: { vehicleNumber?: string; licenseNumber?: string; vehicleType?: string } }) => api.patch("/users/updateMe", data);
 export const updatePassword = (data: any) => api.patch("/users/updateMyPassword", data);
+
+// Wallet & Payout Methods
+export const getMyWallet = () => api.get("/wallet/my-wallet");
+export const requestPayout = (amount: number, bankDetails?: any) => api.post("/wallet/request-payout", { amount, bankDetails });

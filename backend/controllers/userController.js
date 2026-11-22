@@ -21,6 +21,7 @@ export const getMe = asyncHandler(async (req, res, next) => {
   };
 
   if (req.userType === 'delivery') {
+    profileData.availability = user.availability ?? false;
     profileData.deliveryProfile = {
       vehicleNumber: user.vehicleNumber,
       licenseNumber: user.licenseNumber,
@@ -28,7 +29,7 @@ export const getMe = asyncHandler(async (req, res, next) => {
       rating: user.rating,
       totalRatings: user.totalRatings,
       adminComment: user.adminComment,
-      availability: user.availability
+      availability: user.availability ?? false
     };
   }
 
@@ -96,6 +97,10 @@ export const updateMe = asyncHandler(async (req, res, next) => {
     status: req.user.status,
     createdAt: req.user.createdAt,
   };
+
+  if (req.userType === 'delivery') {
+    responseData.availability = req.user.availability ?? false;
+  }
 
   const message = requiresReverification
     ? 'Profile updated. Your delivery details are now pending admin re-verification.'

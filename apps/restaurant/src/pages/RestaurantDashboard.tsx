@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Clock, UtensilsCrossed, BarChart3, RefreshCw, Settings } from "lucide-react";
+import { ShoppingBag, Clock, UtensilsCrossed, BarChart3, RefreshCw, Settings, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import RestaurantStats from "@/components/restaurant/RestaurantStats";
@@ -9,17 +9,19 @@ import RestaurantOrderCard from "@/components/restaurant/RestaurantOrderCard";
 import RestaurantMenuEditor from "@/components/restaurant/RestaurantMenuEditor";
 import RestaurantRevenueChart from "@/components/restaurant/RestaurantRevenueChart";
 import RestaurantProfileEditor from "@/components/restaurant/RestaurantProfileEditor";
+import RestaurantWallet from "@/components/restaurant/RestaurantWallet";
 import * as api from "@/api";
 import { socketService } from "@/services/socket";
 import { useAuthStore } from "@/store/useAuthStore";
 
-type Tab = "orders" | "history" | "menu" | "revenue" | "settings";
+type Tab = "orders" | "history" | "menu" | "revenue" | "wallet" | "settings";
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: "orders", label: "Live Orders", icon: ShoppingBag },
   { id: "history", label: "History", icon: Clock },
   { id: "menu", label: "Menu", icon: UtensilsCrossed },
   { id: "revenue", label: "Revenue", icon: BarChart3 },
+  { id: "wallet", label: "Wallet & Payouts", icon: Wallet },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -65,8 +67,14 @@ const RestaurantDashboard = () => {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res: any = await api.getRestaurantOrders();
-      if (res.status === "success") setAllOrders(res.data);
+      const res: any = await api.getRestaurantOrders("history");
+      if (res.status === "success") {
+        // Enforce that only completed or cancelled orders appear in History
+        const historyOnly = (res.data || []).filter(
+          (o: any) => o.status === "Delivered" || o.status === "Cancelled"
+        );
+        setAllOrders(historyOnly);
+      }
     } catch (err: any) {
       console.error(err);
     }
@@ -77,8 +85,13 @@ const RestaurantDashboard = () => {
   }, [fetchData]);
 
   useEffect(() => {
-    if (activeTab === "history") fetchHistory();
-  }, [activeTab, fetchHistory]);
+    if (activeTab === "orders") {
+      fetchData(false);
+    } else if (activeTab === "history") {
+      fetchHistory();
+      fetchData(false);
+    }
+  }, [activeTab, fetchData, fetchHistory]);
 
   // Socket setup
   useEffect(() => {
@@ -96,15 +109,19 @@ const RestaurantDashboard = () => {
     });
 
     socketService.onRestaurantOrderUpdated(({ orderId, status, data }) => {
-      setActiveOrders((prev) =>
-        status === "Out for Delivery" || status === "Delivered" || status === "Cancelled"
-          ? prev.filter((o) => o._id !== orderId)
-          : prev.map((o) => (o._id === orderId ? { ...o, status, ...data } : o))
-      );
+      if (status === "Delivered" || status === "Cancelled") {
+        setActiveOrders((prev) => prev.filter((o) => o._id !== orderId));
+        fetchHistory();
+      } else {
+        setActiveOrders((prev) =>
+          prev.map((o) => (o._id === orderId ? { ...o, status, ...data } : o))
+        );
+      }
+      fetchData(false);
     });
 
     return () => { socketService.offRestaurantEvents(); };
-  }, [restaurant?.id, fetchData]);
+  }, [restaurant?.id, fetchData, fetchHistory]);
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
     setProcessing(orderId);
@@ -112,8 +129,9 @@ const RestaurantDashboard = () => {
       const res: any = await api.updateRestaurantOrderStatus(orderId, status);
       if (res.status === "success") {
         toast.success(`Order marked as ${status}`);
-        if (status === "Cancelled" || status === "Ready for Pickup") {
-          setActiveOrders((prev) => status === "Cancelled" ? prev.filter((o) => o._id !== orderId) : prev.map((o) => o._id === orderId ? res.data : o));
+        if (status === "Cancelled") {
+          setActiveOrders((prev) => prev.filter((o) => o._id !== orderId));
+          fetchHistory();
         } else {
           setActiveOrders((prev) => prev.map((o) => (o._id === orderId ? res.data : o)));
         }
@@ -243,6 +261,10 @@ const RestaurantDashboard = () => {
 
             {activeTab === "revenue" && (
               <RestaurantRevenueChart dailyRevenue={stats?.dailyRevenue || []} topItems={stats?.topItems || []} stats={stats} />
+            )}
+
+            {activeTab === "wallet" && (
+              <RestaurantWallet />
             )}
 
             {activeTab === "settings" && restaurant && (

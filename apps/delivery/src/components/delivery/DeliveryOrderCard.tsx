@@ -167,8 +167,10 @@ const DeliveryOrderCard = ({ order, type, onAccept, onPickup, onComplete, isProc
             </div>
             <div className="flex items-center gap-1 text-emerald-500">
               <IndianRupee className="w-3 h-3" />
-              <span className="text-xs font-black">+{Math.round(order.totalAmount * 0.15)}</span>
-              <span className="text-[10px] font-bold text-gray-400 ml-1">earned</span>
+              <span className="text-xs font-black">
+                +{order.settlement?.deliveryPartnerAmount !== undefined ? order.settlement.deliveryPartnerAmount : (order.pricing?.deliveryFee !== undefined ? order.pricing.deliveryFee : 30)}
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 ml-1">wallet credited</span>
             </div>
           </div>
         )}

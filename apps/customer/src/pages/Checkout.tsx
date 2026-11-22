@@ -31,7 +31,7 @@ const Checkout = () => {
       name: user?.name || "",
       email: user?.email || "",
       phone: user?.phone || "",
-      paymentMethod: "cod",
+      paymentMethod: "card",
       line1: savedAddress.line1 || "",
       line2: savedAddress.line2 || "",
       pincode: savedAddress.pincode || ""
@@ -105,9 +105,11 @@ const Checkout = () => {
     return Math.min(c.value, totalPrice);
   }, [coupon, totalPrice]);
 
+  const packagingFee = items.length > 0 ? 20 : 0;
   const deliveryFee = totalPrice > 199 ? 0 : 30;
-  const taxes = Math.round(totalPrice * 0.05);
-  const grandTotal = Math.round(totalPrice - discount + deliveryFee + taxes);
+  const platformFee = items.length > 0 ? 5 : 0;
+  const taxes = Math.round((totalPrice + packagingFee) * 0.05);
+  const grandTotal = Math.round(totalPrice - discount + packagingFee + deliveryFee + platformFee + taxes);
 
   const playSuccessSound = () => {
     try {
@@ -199,6 +201,15 @@ const Checkout = () => {
             const createRes: any = await api.placeOrder({
               items,
               totalAmount: grandTotal,
+              pricing: {
+                foodSubtotal: totalPrice,
+                packagingFee,
+                deliveryFee,
+                platformFee,
+                tax: taxes,
+                discount,
+                totalAmount: grandTotal
+              },
               address: fullAddress,
               phone: data.phone,
               email: data.email,
@@ -240,40 +251,8 @@ const Checkout = () => {
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
-    if (data.paymentMethod === "card") {
-      await handleRazorpay(data);
-      return;
-    }
-
-    setProcessingPayment(true);
-    try {
-      const fullAddress = `${data.line1}${data.line2 ? `, ${data.line2}` : ""}, ${data.pincode}`;
-      const res: any = await api.placeOrder({
-        items,
-        totalAmount: grandTotal,
-        address: fullAddress,
-        phone: data.phone,
-        email: data.email,
-        paymentMethod: "cod",
-        restaurantId: items[0]?.restaurantId || null,
-        restaurantName: items[0]?.restaurantName || null,
-        location: locationCoords
-      });
-
-      saveAddressToLocal(data);
-
-      if (res.status === 'success') {
-        setOrderId(res.data._id);
-        setOrderPlaced(true);
-        clearCart();
-        showSuccessToast(res.data._id);
-        setTimeout(() => navigate("/orders"), 2000);
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to place order");
-    } finally {
-      setProcessingPayment(false);
-    }
+    // 100% Online Payment via Razorpay
+    await handleRazorpay(data);
   };
 
   if (items.length === 0 && !orderPlaced) {
@@ -365,20 +344,24 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Payment */}
+          {/* Payment Method - Secure Online Payment */}
           <div className="bg-card rounded-[2.5rem] shadow-card p-8 border border-gray-100">
-            <h3 className="text-lg font-black text-card-foreground mb-6 flex items-center gap-2">
+            <h3 className="text-lg font-black text-card-foreground mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-primary" /> Payment Method
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button type="button" onClick={() => setValue("paymentMethod", "cod")} className={`flex items-center gap-4 p-5 rounded-3xl transition-all text-left ${paymentMethod === "cod" ? "bg-primary/5 ring-2 ring-primary" : "bg-gray-50 border border-transparent"}`}>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${paymentMethod === "cod" ? "bg-primary text-white" : "bg-white text-gray-400 shadow-sm"}`}><Banknote className="w-6 h-6" /></div>
-                <div><p className="text-sm font-black text-gray-900">Cash on Delivery</p><p className="text-[10px] font-bold text-gray-400">Pay at your doorstep</p></div>
-              </button>
-              <button type="button" onClick={() => setValue("paymentMethod", "card")} className={`flex items-center gap-4 p-5 rounded-3xl transition-all text-left ${paymentMethod === "card" ? "bg-primary/5 ring-2 ring-primary" : "bg-gray-50 border border-transparent"}`}>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${paymentMethod === "card" ? "bg-primary text-white" : "bg-white text-gray-400 shadow-sm"}`}><CreditCard className="w-6 h-6" /></div>
-                <div><p className="text-sm font-black text-gray-900">Online Payment</p><p className="text-[10px] font-bold text-gray-400">Cards, UPI, Banking</p></div>
-              </button>
+            <div className="p-5 rounded-3xl bg-primary/5 ring-2 ring-primary flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-sm">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-gray-900">Instant Online Payment</p>
+                  <p className="text-[10px] font-bold text-gray-400">UPI, Cards, NetBanking via Razorpay</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
+                100% Secure
+              </span>
             </div>
           </div>
 
@@ -398,7 +381,10 @@ const Checkout = () => {
               <div className="pt-4 border-t border-gray-50 space-y-2">
                 <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Item Total</span><span>₹{totalPrice}</span></div>
                 {discount > 0 && <div className="flex justify-between text-xs font-bold text-emerald-500 uppercase tracking-wider"><span>Discount</span><span>-₹{discount}</span></div>}
-                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Taxes & Charges</span><span>₹{taxes + deliveryFee}</span></div>
+                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Restaurant Packaging</span><span>₹{packagingFee}</span></div>
+                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Delivery Partner Fee</span><span>{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span></div>
+                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Platform Fee</span><span>₹{platformFee}</span></div>
+                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Govt. Taxes (5%)</span><span>₹{taxes}</span></div>
               </div>
               <div className="pt-4 border-t-2 border-dashed border-gray-100 flex justify-between items-center">
                 <span className="text-lg font-black text-gray-900">Grand Total</span>
@@ -408,7 +394,7 @@ const Checkout = () => {
           </div>
 
           <button type="submit" disabled={processingPayment} className="w-full h-16 gradient-primary text-white font-black rounded-3xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-lg disabled:opacity-50">
-            {processingPayment ? "Processing..." : `Complete Order — ₹${grandTotal}`}
+            {processingPayment ? "Opening Razorpay..." : `Pay Online & Order — ₹${grandTotal}`}
           </button>
         </form>
       </div>

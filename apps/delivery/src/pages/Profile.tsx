@@ -91,9 +91,10 @@ const Profile = () => {
       try {
         const res: any = await api.getUserProfile();
         if (res.status === 'success') {
-          setUser(res.data);
-          // console.log(res.data);
-          setProfileData(res.data);
+          const availability = res.data.availability ?? res.data.deliveryProfile?.availability ?? false;
+          const merged = { ...res.data, availability };
+          setUser(merged);
+          setProfileData(merged);
           setForm({
             name: res.data.name,
             phone: res.data.phone || "",
@@ -202,15 +203,18 @@ const Profile = () => {
     }
   };
   const handleToggleStatus = async () => {
-    const newOnline = !profileData?.availability;
+    const currentOnline = !!profileData?.availability;
+    const newOnline = !currentOnline;
     try {
-      await api.updateDeliveryStatus(newOnline);
+      const statusRes: any = await api.updateDeliveryStatus(newOnline);
+      const updatedOnline = statusRes?.data?.availability !== undefined ? statusRes.data.availability : newOnline;
       const { data } = await api.getUserProfile();
-      setUser(data);
-      setProfileData(data);
+      const merged = { ...data, availability: updatedOnline };
+      setUser(merged);
+      setProfileData(merged);
       setDeliveryEdited(false);
       setShowReverifyWarning(false);
-      toast.success('Delivery status updated');
+      toast.success(updatedOnline ? 'You are now Online!' : 'You are now Offline');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update status');
     }
@@ -334,7 +338,20 @@ const Profile = () => {
                     <Bike className="w-4 h-4 text-gray-400" />
                     <span className="text-xs font-bold text-gray-500">Delivery Status</span>
                   </div>
-                  <StatusBadge status={profileData?.availability || "Offline"} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={profileData?.availability ? "online" : "offline"} />
+                    <button
+                      type="button"
+                      onClick={handleToggleStatus}
+                      className={`text-xs font-bold px-2 py-0.5 rounded-lg border transition-all ${
+                        profileData?.availability
+                          ? "text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100"
+                          : "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                      }`}
+                    >
+                      {profileData?.availability ? "Go Offline" : "Go Online"}
+                    </button>
+                  </div>
                 </div>
               )}
 

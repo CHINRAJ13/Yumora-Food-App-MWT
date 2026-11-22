@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Yumora Delivery",
+    "slug": "mobile-delivery",
+    "scheme": "yumora-delivery",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Yumora Delivery requires location access to navigate to restaurants and customer drop-off locations.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Yumora Delivery requires background location access to share live delivery status with customers while navigating."
+      }
+    },
+    "android": {
+      "package": "com.yumora.delivery",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Yumora Delivery to share your real-time road location with customers while delivering."
+        }
+      ]
+    ]
+  }
+}

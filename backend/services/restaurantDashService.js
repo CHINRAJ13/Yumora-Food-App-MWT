@@ -13,11 +13,15 @@ export const getMyRestaurant = async (userId) => {
 };
 
 /**
- * Get all orders for a specific restaurant
+ * Get orders for a specific restaurant (with support for 'active', 'history', or exact status)
  */
 export const getRestaurantOrders = async (restaurantId, status) => {
   const filter = { restaurantId };
-  if (status && status !== 'all') {
+  if (status === 'history') {
+    filter.status = { $in: ['Delivered', 'Cancelled'] };
+  } else if (status === 'active') {
+    filter.status = { $in: ['Placed', 'Preparing', 'Ready for Pickup', 'Out for Delivery'] };
+  } else if (status && status !== 'all') {
     filter.status = status;
   }
   return await Order.find(filter).sort({ createdAt: -1 });
@@ -29,7 +33,7 @@ export const getRestaurantOrders = async (restaurantId, status) => {
 export const getActiveOrders = async (restaurantId) => {
   return await Order.find({
     restaurantId,
-    status: { $in: ['Placed', 'Preparing', 'Ready for Pickup'] }
+    status: { $in: ['Placed', 'Preparing', 'Ready for Pickup', 'Out for Delivery'] }
   }).sort({ createdAt: -1 });
 };
 
@@ -68,28 +72,40 @@ export const getRestaurantStats = async (restaurantId) => {
   const cancelledOrders = await Order.countDocuments({ restaurantId, status: 'Cancelled' });
   const activeOrders = await Order.countDocuments({
     restaurantId,
-    status: { $in: ['Placed', 'Preparing', 'Ready for Pickup'] }
+    status: { $in: ['Placed', 'Preparing', 'Ready for Pickup', 'Out for Delivery'] }
   });
 
-  // Revenue aggregations
+  // Revenue aggregations (Net Restaurant Share: Food + Packing - Commission)
+  const restaurantShareExpr = {
+    $ifNull: [
+      '$settlement.restaurantAmount',
+      {
+        $subtract: [
+          { $add: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, { $ifNull: ['$pricing.packagingFee', 0] }] },
+          { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.10] }
+        ]
+      }
+    ]
+  };
+
   const totalRevenue = await Order.aggregate([
     { $match: { restaurantId, status: 'Delivered' } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    { $group: { _id: null, total: { $sum: restaurantShareExpr } } }
   ]);
 
   const todayRevenue = await Order.aggregate([
     { $match: { restaurantId, status: 'Delivered', createdAt: { $gte: startOfToday } } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
+    { $group: { _id: null, total: { $sum: restaurantShareExpr }, count: { $sum: 1 } } }
   ]);
 
   const weeklyRevenue = await Order.aggregate([
     { $match: { restaurantId, status: 'Delivered', createdAt: { $gte: startOfWeek } } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
+    { $group: { _id: null, total: { $sum: restaurantShareExpr }, count: { $sum: 1 } } }
   ]);
 
   const monthlyRevenue = await Order.aggregate([
     { $match: { restaurantId, status: 'Delivered', createdAt: { $gte: startOfMonth } } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
+    { $group: { _id: null, total: { $sum: restaurantShareExpr }, count: { $sum: 1 } } }
   ]);
 
   // Daily revenue for chart (last 7 days)
@@ -160,9 +176,12 @@ export const updateRestaurantMenu = async (restaurantId, menu) => {
 export const toggleRestaurantStatus = async (restaurantId) => {
   const restaurant = await Restaurant.findOne({ id: restaurantId });
   if (!restaurant) throw new Error('Restaurant not found');
-  restaurant.acceptsOrders = !restaurant.acceptsOrders;
-  await restaurant.save();
-  return restaurant;
+  const updated = await Restaurant.findOneAndUpdate(
+    { id: restaurantId },
+    { $set: { acceptsOrders: !restaurant.acceptsOrders } },
+    { returnDocument: 'after' }
+  );
+  return updated;
 };
 
 /**

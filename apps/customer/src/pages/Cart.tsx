@@ -43,9 +43,11 @@ const Cart = () => {
     }
   }, [searchParams, coupon, items.length, applyCoupon]);
 
+  const packagingFee = items.length > 0 ? 20 : 0;
   const deliveryFee = totalPrice > 199 ? 0 : 30;
-  const taxes = Math.round(totalPrice * 0.05);
-  const grandTotal = totalPrice - discount + deliveryFee + taxes;
+  const platformFee = items.length > 0 ? 5 : 0;
+  const taxes = Math.round((totalPrice + packagingFee) * 0.05);
+  const grandTotal = totalPrice - discount + packagingFee + deliveryFee + platformFee + taxes;
 
   if (items.length === 0) {
     return (
@@ -152,8 +154,10 @@ const Cart = () => {
           <h3 className="font-bold text-card-foreground">Bill Details</h3>
           <div className="flex justify-between text-sm text-muted-foreground"><span>Item Total</span><span>₹{totalPrice}</span></div>
           {discount > 0 && <div className="flex justify-between text-sm text-success font-semibold"><span>Coupon Discount</span><span>-₹{discount}</span></div>}
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Delivery Fee</span><span>{deliveryFee === 0 ? <span className="text-success font-semibold">FREE</span> : `₹${deliveryFee}`}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Taxes (5%)</span><span>₹{taxes}</span></div>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Restaurant Packaging</span><span>₹{packagingFee}</span></div>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Delivery Partner Fee</span><span>{deliveryFee === 0 ? <span className="text-success font-semibold">FREE</span> : `₹${deliveryFee}`}</span></div>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Platform Fee</span><span>₹{platformFee}</span></div>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Govt. Taxes (5%)</span><span>₹{taxes}</span></div>
           <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
             <span>To Pay</span><span>₹{Math.round(grandTotal)}</span>
           </div>

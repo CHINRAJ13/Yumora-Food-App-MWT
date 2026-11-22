@@ -53,10 +53,17 @@ export const getActive = asyncHandler(async (req, res, next) => {
  */
 export const updateStatus = asyncHandler(async (req, res, next) => {
   const restaurant = await getMyRestaurant(req.user._id);
-  const { status } = req.body;
+  const { status, reason } = req.body;
   
   if (!status) {
     return next(new AppError('Status is required', 400));
+  }
+
+  // If restaurant is cancelling the order, route through full refund & cancellation flow
+  if (status === 'Cancelled') {
+    const { cancelOrderService } = await import('../services/cancellationService.js');
+    const cancelledOrder = await cancelOrderService(req.params.id, req.user, 'restaurant', reason || 'Cancelled by restaurant');
+    return sendResponse(res, 200, 'Order cancelled and refund processed', cancelledOrder);
   }
 
   const order = await updateOrderByRestaurant(req.params.id, restaurant.id, status);

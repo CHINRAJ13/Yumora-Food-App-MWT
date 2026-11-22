@@ -4,7 +4,8 @@ import {
   getUserOrders,
   getOrderById,
   updateOrderStatus,
-  addOrderReview
+  addOrderReview,
+  cancelOrder
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -19,5 +20,6 @@ router.get("/single/:id", protect, getOrderById); // Specific ID route
 router.get("/:userId", protect, getUserOrders); // Legacy support
 router.patch("/update/:id", protect, updateOrderStatus); // Changed from PUT to PATCH
 router.post("/:id/review", protect, addOrderReview);
+router.post("/:id/cancel", protect, cancelOrder);
 
 export default router;

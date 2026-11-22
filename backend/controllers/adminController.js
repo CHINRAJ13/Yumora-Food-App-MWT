@@ -10,23 +10,46 @@ import Admin from '../models/Admin.js';
 import Category from '../models/Category.js';
 import Banner from '../models/Banner.js';
 import { sendEmail } from '../utils/email.js';
-import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted } from '../socket.js';
+import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted, emitOrderAssignedToDriver } from '../socket.js';
 
 export const getStats = asyncHandler(async (req, res, next) => {
   const orderCount = await Order.countDocuments();
   const restaurantCount = await Restaurant.countDocuments();
   const customerCount = await Customer.countDocuments();
   
-  const revenue = await Order.aggregate([
+  const gmv = await Order.aggregate([
     { $match: { status: 'Delivered' } },
     { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+  ]);
+
+  const platformProfitAggregate = await Order.aggregate([
+    { $match: { status: 'Delivered' } },
+    {
+      $group: {
+        _id: null,
+        total: {
+          $sum: {
+            $ifNull: [
+              '$settlement.platformProfit',
+              {
+                $add: [
+                  5,
+                  { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.10] }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
   ]);
 
   sendResponse(res, 200, 'Stats retrieved successfully', {
     orderCount,
     restaurantCount,
     userCount: customerCount, // Keeping the key name userCount for frontend compatibility
-    totalRevenue: revenue[0]?.total || 0
+    totalRevenue: gmv[0]?.total || 0, // GMV
+    platformNetRevenue: Math.round(platformProfitAggregate[0]?.total || 0)
   });
 });
 
@@ -52,7 +75,13 @@ export const getAllOrders = asyncHandler(async (req, res, next) => {
 
 export const updateOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, reason } = req.body;
+
+  if (status === 'Cancelled') {
+    const { cancelOrderService } = await import('../services/cancellationService.js');
+    const cancelledOrder = await cancelOrderService(id, req.user, 'admin', reason || 'Cancelled by admin');
+    return sendResponse(res, 200, 'Order cancelled and refund processed', cancelledOrder);
+  }
 
   const order = await Order.findByIdAndUpdate(id, { status }, { returnDocument: 'after' });
   
@@ -99,12 +128,13 @@ export const assignDeliveryPerson = asyncHandler(async (req, res, next) => {
 
   emitOrderAccepted(id, { _id: deliveryPerson._id, name: deliveryPerson.name });
   emitOrderUpdate(id, 'Out for Delivery', order);
+  emitOrderAssignedToDriver(deliveryPerson._id.toString(), order);
 
   sendResponse(res, 200, 'Delivery person assigned successfully', order);
 });
 
 export const getDeliveryPersons = asyncHandler(async (req, res, next) => {
-  const deliveryPersons = await DeliveryPartner.find().select('name email phone status');
+  const deliveryPersons = await DeliveryPartner.find().select('name email phone status availability');
   sendResponse(res, 200, 'Delivery persons retrieved', deliveryPersons);
 });
 
@@ -164,11 +194,32 @@ export const verifyRestaurant = asyncHandler(async (req, res, next) => {
   sendResponse(res, 200, `Restaurant ${isVerified ? 'verified' : 'unverified'} successfully`, restaurant);
 });
 
+export const updateRestaurantAvailability = asyncHandler(async (req, res, next) => {
+  const { availability } = req.body;
+  const { id } = req.params;
+
+  if (typeof availability !== 'boolean') {
+    return next(new AppError('Availability must be a boolean (true/false)', 400));
+  }
+
+  let restaurant = await Restaurant.findOneAndUpdate(
+    { $or: [{ id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] },
+    { availability },
+    { returnDocument: 'after' }
+  );
+
+  if (!restaurant) {
+    return next(new AppError('Restaurant not found', 404));
+  }
+
+  sendResponse(res, 200, `Restaurant is now ${availability ? 'Open' : 'Closed'}`, restaurant);
+});
+
 // --- Users ---
 export const getAllUsers = asyncHandler(async (req, res, next) => {
   // Aggregate all user types into one response
   const customers = await Customer.find().lean().then(docs => docs.map(d => ({ ...d, type: 'customer' })));
-  const deliveryPartners = await DeliveryPartner.find().lean().then(docs => docs.map(d => ({ ...d, type: 'delivery', deliveryDetails: d })));
+  const deliveryPartners = await DeliveryPartner.find().lean().then(docs => docs.map(d => ({ ...d, type: 'delivery', availability: d.availability ?? false, deliveryDetails: d })));
   
   const restaurantOwners = await RestaurantOwner.aggregate([
     {
@@ -185,7 +236,7 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
         preserveNullAndEmptyArrays: true
       }
     }
-  ]).then(docs => docs.map(d => ({ ...d, type: 'restaurant' })));
+  ]).then(docs => docs.map(d => ({ ...d, type: 'restaurant', availability: d.restaurantDetails?.availability ?? false })));
 
   const admins = await Admin.find().lean().then(docs => docs.map(d => ({ ...d, type: 'admin' })));
 
@@ -280,6 +331,52 @@ export const updateUserStatus = asyncHandler(async (req, res, next) => {
   }
 
   sendResponse(res, 200, `User status updated to ${status}`, user);
+});
+
+export const updateUserAvailability = asyncHandler(async (req, res, next) => {
+  const { availability } = req.body;
+  const userId = req.params.id;
+
+  if (typeof availability !== 'boolean') {
+    return next(new AppError('Availability must be a boolean (true/false)', 400));
+  }
+
+  // 1. Try Delivery Partner
+  let partner = await DeliveryPartner.findByIdAndUpdate(userId, { availability }, { new: true });
+  if (partner) {
+    return sendResponse(res, 200, `Rider availability set to ${availability ? 'Online' : 'Offline'}`, {
+      _id: partner._id,
+      type: 'delivery',
+      availability: partner.availability
+    });
+  }
+
+  // 2. Try Restaurant Owner (and update linked restaurant)
+  const owner = await RestaurantOwner.findById(userId);
+  if (owner) {
+    const restaurant = await Restaurant.findOneAndUpdate(
+      { ownerId: owner._id },
+      { availability },
+      { new: true }
+    );
+    return sendResponse(res, 200, `Restaurant availability set to ${availability ? 'Open' : 'Closed'}`, {
+      _id: owner._id,
+      type: 'restaurant',
+      availability: restaurant?.availability ?? availability
+    });
+  }
+
+  // 3. Try direct Restaurant ID
+  const directRest = await Restaurant.findByIdAndUpdate(userId, { availability }, { new: true });
+  if (directRest) {
+    return sendResponse(res, 200, `Restaurant availability set to ${availability ? 'Open' : 'Closed'}`, {
+      _id: directRest._id,
+      type: 'restaurant',
+      availability: directRest.availability
+    });
+  }
+
+  return next(new AppError('User not found', 404));
 });
 
 export const deleteCategory = asyncHandler(async (req, res, next) => {

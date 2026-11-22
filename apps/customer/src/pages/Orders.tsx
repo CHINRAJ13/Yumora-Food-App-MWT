@@ -51,12 +51,34 @@ const Orders = () => {
   const activeOrders = orders.filter(o => o.status !== "Delivered" && o.status !== "Cancelled");
   const pastOrders = orders.filter(o => o.status === "Delivered" || o.status === "Cancelled");
 
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
   const handleReorder = (order: any) => {
     clearCart();
     order.items.forEach((item: any) => {
       addItem(item, order.restaurantId, order.restaurantName);
     });
     navigate("/cart");
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this order? A 100% full refund will be automatically refunded to your payment method.")) {
+      return;
+    }
+
+    setCancellingId(orderId);
+    try {
+      const res: any = await api.cancelOrder(orderId, "Customer requested cancellation");
+      if (res.status === 'success') {
+        toast.success("Order cancelled. Full refund has been initiated! 🎉");
+        setSelectedOrder(null);
+        fetchOrders(false);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel order");
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   return (
@@ -155,19 +177,71 @@ const Orders = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Bill Details</h4>
-                  {selectedOrder.items.map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between items-center font-bold">
-                      <div className="flex items-center gap-2">
-                         <span className="text-primary text-xs">x{item.quantity}</span>
-                         <span className="text-sm text-gray-700">{item.name}</span>
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Bill Summary</h4>
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item: any, i: number) => (
+                      <div key={i} className="flex justify-between items-center font-bold">
+                        <div className="flex items-center gap-2">
+                           <span className="text-primary text-xs">x{item.quantity}</span>
+                           <span className="text-sm text-gray-700">{item.name}</span>
+                        </div>
+                        <span className="text-sm text-gray-900">₹{item.price * item.quantity}</span>
                       </div>
-                      <span className="text-sm text-gray-900">₹{item.price * item.quantity}</span>
+                    ))}
+                  </div>
+
+                  {/* Pricing Breakdown */}
+                  <div className="pt-3 border-t border-gray-100 space-y-2 text-xs font-bold text-gray-500">
+                    <div className="flex justify-between">
+                      <span>Item Total</span>
+                      <span>₹{selectedOrder.pricing?.foodSubtotal || selectedOrder.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0)}</span>
                     </div>
-                  ))}
-                  <div className="pt-4 border-t border-dashed flex justify-between items-center">
-                    <span className="text-base font-black text-gray-900">Grand Total</span>
+                    {selectedOrder.pricing?.discount > 0 && (
+                      <div className="flex justify-between text-emerald-600">
+                        <span>Coupon Discount</span>
+                        <span>-₹{selectedOrder.pricing.discount}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Restaurant Packaging</span>
+                      <span>₹{selectedOrder.pricing?.packagingFee !== undefined ? selectedOrder.pricing.packagingFee : 20}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Delivery Partner Fee</span>
+                      <span>
+                        {(selectedOrder.pricing?.deliveryFee === 0) ? (
+                          <span className="text-emerald-600">FREE</span>
+                        ) : (
+                          `₹${selectedOrder.pricing?.deliveryFee !== undefined ? selectedOrder.pricing.deliveryFee : 30}`
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Platform Fee</span>
+                      <span>₹{selectedOrder.pricing?.platformFee !== undefined ? selectedOrder.pricing.platformFee : 5}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Govt. Taxes (5%)</span>
+                      <span>₹{selectedOrder.pricing?.tax !== undefined ? selectedOrder.pricing.tax : Math.round((selectedOrder.totalAmount || 0) * 0.05)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-dashed border-gray-200 flex justify-between items-center">
+                    <span className="text-base font-black text-gray-900">Paid Amount</span>
                     <span className="text-xl font-black text-primary">₹{selectedOrder.totalAmount}</span>
+                  </div>
+
+                  {/* Payment Verification Badge */}
+                  <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Payment Method</p>
+                      <p className="text-xs font-black text-gray-900 mt-0.5">
+                        Online Payment {selectedOrder.paymentId ? `(Ref: ${selectedOrder.paymentId.substring(0, 14)}...)` : "(Razorpay)"}
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                      {selectedOrder.paymentStatus || "PAID"}
+                    </span>
                   </div>
                 </div>
 
@@ -178,12 +252,66 @@ const Orders = () => {
                     <p>{selectedOrder.address}</p>
                   </div>
                 </div>
+
+                {/* Cancellation & Refund Info if Cancelled */}
+                {selectedOrder.status === 'Cancelled' && (
+                  <div className="bg-red-50/70 p-4 rounded-2xl border border-red-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-red-600 uppercase tracking-wider">Order Cancelled</p>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        selectedOrder.refund?.status === 'processed'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : selectedOrder.refund?.status === 'failed'
+                          ? 'bg-rose-100 text-rose-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {selectedOrder.refund?.status === 'processed'
+                          ? '✓ Refund Completed'
+                          : selectedOrder.refund?.status === 'failed'
+                          ? 'Refund Failed'
+                          : 'Refund Processing'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-600 font-medium">
+                      Reason: <span className="font-semibold text-gray-900">{selectedOrder.cancellation?.reason || 'Cancelled by customer'}</span>
+                    </p>
+
+                    <div className="pt-2 border-t border-red-100/60 flex flex-col gap-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500 font-medium">Refund Amount:</span>
+                        <span className="font-black text-gray-900">₹{selectedOrder.refund?.amount || selectedOrder.totalAmount} (100%)</span>
+                      </div>
+                      {selectedOrder.refund?.refundId && (
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-gray-500">Gateway Refund ID:</span>
+                          <span className="font-mono text-gray-700 font-semibold">{selectedOrder.refund.refundId}</span>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Credited back directly to your original payment method (UPI / Card / Netbanking).
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-6 pt-0">
-                <Button onClick={() => handleReorder(selectedOrder)} className="w-full h-12 rounded-xl gradient-primary font-bold shadow-lg">
-                  Reorder These Items
-                </Button>
+              <div className="p-6 pt-0 space-y-2">
+                {selectedOrder.status === 'Placed' && (
+                  <Button 
+                    onClick={() => handleCancelOrder(selectedOrder._id)} 
+                    disabled={cancellingId === selectedOrder._id}
+                    variant="outline"
+                    className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 font-bold"
+                  >
+                    {cancellingId === selectedOrder._id ? "Cancelling & Refunding..." : "Cancel Order (100% Refund)"}
+                  </Button>
+                )}
+                {selectedOrder.status !== 'Placed' && (
+                  <Button onClick={() => handleReorder(selectedOrder)} className="w-full h-12 rounded-xl gradient-primary font-bold shadow-lg">
+                    Reorder These Items
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -232,10 +360,27 @@ const OrderCard = ({ order, index, isPast = false, onView, onReorder, onReview }
                   <span>₹{order.totalAmount}</span>
                 </div>
               </div>
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                order.status === "Delivered" ? "bg-green-50 text-green-600 border-green-100" : "bg-orange-50 text-orange-600 border-orange-100 animate-pulse"
-              }`}>
-                {order.status}
+              <div className="flex items-center gap-2">
+                {order.status === "Cancelled" && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    order.refund?.status === "processed"
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                      : order.refund?.status === "failed"
+                      ? "bg-rose-50 text-rose-600 border-rose-200"
+                      : "bg-amber-50 text-amber-600 border-amber-200"
+                  }`}>
+                    {order.refund?.status === "processed"
+                      ? "✓ Refunded"
+                      : order.refund?.status === "failed"
+                      ? "Refund Failed"
+                      : "Refund Pending"}
+                  </span>
+                )}
+                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                  order.status === "Delivered" ? "bg-green-50 text-green-600 border-green-100" : order.status === "Cancelled" ? "bg-red-50 text-red-600 border-red-100" : "bg-orange-50 text-orange-600 border-orange-100 animate-pulse"
+                }`}>
+                  {order.status}
+                </div>
               </div>
             </div>
 

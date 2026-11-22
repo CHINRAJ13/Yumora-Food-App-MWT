@@ -2,10 +2,19 @@
   "name": "crave-quest-monorepo",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "delivery": "npm --prefix mobile-delivery start",
+    "customer": "npm --prefix mobile-customer start",
+    "restaurant": "npm --prefix mobile-restaurant start",
+    "backend": "npm --prefix backend run dev"
+  },
   "workspaces": [
     "apps/*",
     "packages/*",
     "backend",
-    "frontend"
+    "frontend",
+    "mobile-customer",
+    "mobile-delivery",
+    "mobile-restaurant"
   ]
 }

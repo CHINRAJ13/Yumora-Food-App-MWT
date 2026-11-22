@@ -18,22 +18,74 @@ const orderSchema = new mongoose.Schema({
   },
   items: Array,
   totalAmount: Number,
+  pricing: {
+    foodSubtotal: { type: Number, default: 0 },
+    packagingFee: { type: Number, default: 0 },
+    deliveryFee: { type: Number, default: 0 },
+    platformFee: { type: Number, default: 5 },
+    tax: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 }
+  },
+  settlement: {
+    commissionRate: { type: Number, default: 10 }, // 10% platform commission on food
+    platformCommission: { type: Number, default: 0 },
+    restaurantAmount: { type: Number, default: 0 },
+    deliveryPartnerAmount: { type: Number, default: 0 },
+    platformProfit: { type: Number, default: 0 },
+    isSettled: { type: Boolean, default: false },
+    settledAt: { type: Date, default: null }
+  },
   address: String,
   paymentMethod: {
     type: String,
-    enum: ["cod", "upi", "card", "online"],
-    default: "cod"
+    enum: ["card", "upi", "online", "netbanking", "cod", "razorpay"],
+    default: "online"
   },
   paymentId: String, // Razorpay Payment ID
   paymentStatus: {
     type: String,
-    enum: ["Pending", "Success", "Failed", "COD"],
+    enum: ["Pending", "Success", "Failed"],
     default: "Pending"
   },
   status: {
     type: String,
     enum: ["Placed", "Preparing", "Ready for Pickup", "Out for Delivery", "Delivered", "Cancelled"],
     default: "Placed"
+  },
+  cancellation: {
+    cancelledBy: {
+      type: String,
+      enum: ["customer", "restaurant", "admin", null],
+      default: null
+    },
+    reason: {
+      type: String,
+      default: null
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
+    }
+  },
+  refund: {
+    refundId: {
+      type: String,
+      default: null
+    },
+    amount: {
+      type: Number,
+      default: 0
+    },
+    status: {
+      type: String,
+      enum: ["none", "pending", "processed", "failed"],
+      default: "none"
+    },
+    refundedAt: {
+      type: Date,
+      default: null
+    }
   },
   // Delivery person fields
   deliveryPersonId: {

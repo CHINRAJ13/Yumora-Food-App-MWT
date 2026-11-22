@@ -107,12 +107,23 @@ const AdminOrders = () => {
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    if (newStatus === "Cancelled") {
+      const confirmCancel = window.confirm(
+        "Are you sure you want to cancel this order? This will immediately process an online refund for the customer and notify all parties."
+      );
+      if (!confirmCancel) return;
+    }
+
     try {
       await updateAdminOrder(orderId, newStatus);
-      toast.success(`Order status updated to ${newStatus}`);
+      if (newStatus === "Cancelled") {
+        toast.success("Order cancelled and refund processed!");
+      } else {
+        toast.success(`Order status updated to ${newStatus}`);
+      }
       fetchOrders();
-    } catch (err) {
-      toast.error("Failed to update status");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
     }
   };
 

@@ -1,4 +1,7 @@
+import mongoose from 'mongoose';
 import Order from '../models/Order.js';
+import Wallet from '../models/Wallet.js';
+import { settleOrderSplits, getOrCreateWallet } from './walletService.js';
 
 /**
  * Get orders that are ready for pickup and not yet assigned to any rider
@@ -93,6 +96,14 @@ export const completeDeliveryService = async (orderId, riderId) => {
   order.status = 'Delivered';
   order.deliveredAt = new Date();
   await order.save();
+
+  // Perform automatic in-app wallet split settlement
+  try {
+    await settleOrderSplits(order._id);
+  } catch (err) {
+    console.error('Settlement error on completeDelivery:', err);
+  }
+
   return order;
 };
 
@@ -100,22 +111,27 @@ export const completeDeliveryService = async (orderId, riderId) => {
  * Get delivery stats for a specific rider
  */
 export const getDeliveryStatsService = async (riderId) => {
+  const riderObjectId = mongoose.Types.ObjectId.isValid(riderId)
+    ? new mongoose.Types.ObjectId(riderId.toString())
+    : riderId;
+
   const totalDeliveries = await Order.countDocuments({
-    deliveryPersonId: riderId,
+    deliveryPersonId: riderObjectId,
     status: 'Delivered'
   });
 
-  const earnings = await Order.aggregate([
+  const wallet = await getOrCreateWallet(riderId, 'delivery');
+
+  const avgDeliveryAggregate = await Order.aggregate([
     {
       $match: {
-        deliveryPersonId: riderId,
+        deliveryPersonId: riderObjectId,
         status: 'Delivered'
       }
     },
     {
       $group: {
         _id: null,
-        totalEarnings: { $sum: '$totalAmount' },
         avgDeliveryTime: {
           $avg: {
             $subtract: ['$deliveredAt', '$assignedAt']
@@ -130,15 +146,15 @@ export const getDeliveryStatsService = async (riderId) => {
   today.setHours(0, 0, 0, 0);
 
   const todayDeliveries = await Order.countDocuments({
-    deliveryPersonId: riderId,
+    deliveryPersonId: riderObjectId,
     status: 'Delivered',
     deliveredAt: { $gte: today }
   });
 
-  const todayEarnings = await Order.aggregate([
+  const todayEarningsAggregate = await Order.aggregate([
     {
       $match: {
-        deliveryPersonId: riderId,
+        deliveryPersonId: riderObjectId,
         status: 'Delivered',
         deliveredAt: { $gte: today }
       }
@@ -146,21 +162,39 @@ export const getDeliveryStatsService = async (riderId) => {
     {
       $group: {
         _id: null,
-        total: { $sum: '$totalAmount' }
+        total: {
+          $sum: {
+            $cond: [
+              { $gt: ['$settlement.deliveryPartnerAmount', 0] },
+              '$settlement.deliveryPartnerAmount',
+              {
+                $cond: [
+                  { $gt: ['$pricing.deliveryFee', 0] },
+                  '$pricing.deliveryFee',
+                  {
+                    $cond: [
+                      { $gt: ['$deliveryFee', 0] },
+                      '$deliveryFee',
+                      { $ifNull: ['$estimatedEarnings', 30] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
       }
     }
   ]);
 
-  // Delivery fee is ~15% of order total (simulated)
-  const DELIVERY_FEE_PERCENT = 0.15;
-
   return {
     totalDeliveries,
-    totalEarnings: Math.round((earnings[0]?.totalEarnings || 0) * DELIVERY_FEE_PERCENT),
-    avgDeliveryTime: earnings[0]?.avgDeliveryTime
-      ? Math.round(earnings[0].avgDeliveryTime / 60000) // Convert ms to minutes
+    totalEarnings: wallet.totalEarned || 0,
+    balance: wallet.balance || 0,
+    avgDeliveryTime: avgDeliveryAggregate[0]?.avgDeliveryTime
+      ? Math.round(avgDeliveryAggregate[0].avgDeliveryTime / 60000) // Convert ms to minutes
       : 0,
     todayDeliveries,
-    todayEarnings: Math.round((todayEarnings[0]?.total || 0) * DELIVERY_FEE_PERCENT)
+    todayEarnings: todayEarningsAggregate[0]?.total || 0
   };
 };

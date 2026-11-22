@@ -6,6 +6,7 @@ import { ShieldCheck, Plus, Search, Mail, UserCheck, UserX, Clock, ShieldAlert }
 
 const PERMISSIONS = [
   { id: 'monitor_orders', label: 'Monitor Orders' },
+  { id: 'monitor_payments', label: 'Monitor Payments & Finance' },
   { id: 'manage_restaurants', label: 'Manage Restaurants' },
   { id: 'manage_users', label: 'Manage Users' },
   { id: 'manage_approvals', label: 'Manage Approvals' },
