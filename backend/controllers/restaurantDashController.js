@@ -151,6 +151,18 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     }
   });
 
+  // Handle kitchen GPS coordinates update (GeoJSON [lng, lat])
+  if (req.body.lat !== undefined && req.body.lng !== undefined) {
+    const lat = Number(req.body.lat);
+    const lng = Number(req.body.lng);
+    if (!Number.isNaN(lat) && !Number.isNaN(lng) && !(lat === 0 && lng === 0)) {
+      updateData.location = {
+        type: 'Point',
+        coordinates: [lng, lat]
+      };
+    }
+  }
+
   // Handle banner image update
   if (req.file) {
     updateData.image = req.file.path;

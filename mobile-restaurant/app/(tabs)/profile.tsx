@@ -35,6 +35,8 @@ export default function RestaurantProfileScreen() {
   const [editCuisines, setEditCuisines] = useState('');
   const [editDeliveryTime, setEditDeliveryTime] = useState('');
   const [editPriceForTwo, setEditPriceForTwo] = useState('');
+  const [editLat, setEditLat] = useState('');
+  const [editLng, setEditLng] = useState('');
   const [editIsVeg, setEditIsVeg] = useState(false);
   const [newBannerUri, setNewBannerUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,7 +49,11 @@ export default function RestaurantProfileScreen() {
     setEditName(restaurant?.name || '');
     setEditCuisines(restaurant?.cuisines?.join(', ') || '');
     setEditDeliveryTime(restaurant?.deliveryTime || '25-35 mins');
+    const coords = (restaurant as any)?.location?.coordinates;
+    const validCoords = Array.isArray(coords) && coords.length === 2 && !(coords[0] === 0 && coords[1] === 0);
     setEditPriceForTwo(String(restaurant?.priceForTwo || '350'));
+    setEditLat(validCoords ? String(coords[1]) : '');
+    setEditLng(validCoords ? String(coords[0]) : '');
     setEditIsVeg(!!restaurant?.isVeg);
     setNewBannerUri(null);
     setIsEditModalOpen(true);
@@ -84,6 +90,10 @@ export default function RestaurantProfileScreen() {
       formData.append('deliveryTime', editDeliveryTime.trim());
       formData.append('priceForTwo', editPriceForTwo.trim());
       formData.append('isVeg', String(editIsVeg));
+      if (editLat.trim() && editLng.trim()) {
+        formData.append('lat', editLat.trim());
+        formData.append('lng', editLng.trim());
+      }
 
       if (newBannerUri) {
         const filename = newBannerUri.split('/').pop() || 'banner.jpg';
@@ -533,6 +543,29 @@ export default function RestaurantProfileScreen() {
                   keyboardType="numeric"
                   className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900"
                 />
+              </View>
+
+              {/* Kitchen GPS Coordinates */}
+              <View className="mb-3">
+                <Text className="text-xs font-bold text-gray-700 mb-1">
+                  Kitchen GPS Coordinates (for Distance Delivery Fee)
+                </Text>
+                <View className="flex-row gap-2">
+                  <TextInput
+                    value={editLat}
+                    onChangeText={setEditLat}
+                    placeholder="Lat (11.0168)"
+                    keyboardType="numeric"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900"
+                  />
+                  <TextInput
+                    value={editLng}
+                    onChangeText={setEditLng}
+                    placeholder="Lng (76.9558)"
+                    keyboardType="numeric"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900"
+                  />
+                </View>
               </View>
 
               {/* Pure Veg Switch */}

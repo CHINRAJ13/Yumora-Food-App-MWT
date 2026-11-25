@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Wallet from '../models/Wallet.js';
 import { settleOrderSplits, getOrCreateWallet } from './walletService.js';
+import { applyStatusTimestamps } from '../utils/orderTimers.js';
 
 /**
  * Get orders that are ready for pickup and not yet assigned to any rider
@@ -93,8 +94,7 @@ export const completeDeliveryService = async (orderId, riderId) => {
     throw { statusCode: 403, message: 'This order is not assigned to you' };
   }
 
-  order.status = 'Delivered';
-  order.deliveredAt = new Date();
+  applyStatusTimestamps(order, 'Delivered');
   await order.save();
 
   // Perform automatic in-app wallet split settlement

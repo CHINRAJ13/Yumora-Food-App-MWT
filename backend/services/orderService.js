@@ -4,6 +4,7 @@ import DeliveryPartner from '../models/DeliveryPartner.js';
 import AppError from '../utils/AppError.js';
 import { sendEmail } from '../utils/email.js';
 import { sendSMS } from '../utils/sms.js';
+import { applyStatusTimestamps } from '../utils/orderTimers.js';
 
 export const createOrderService = async (orderData) => {
   const order = new Order(orderData);
@@ -41,11 +42,11 @@ export const getOrderByIdService = async (id) => {
 };
 
 export const updateOrderStatusService = async (id, status) => {
-  const order = await Order.findByIdAndUpdate(
-    id,
-    { status },
-    { new: true, runValidators: true }
-  );
+  const existing = await Order.findById(id);
+  if (!existing) return null;
+
+  applyStatusTimestamps(existing, status);
+  const order = await existing.save();
 
   if (order && order.phone) {
     sendSMS(

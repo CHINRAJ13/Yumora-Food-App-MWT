@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createOrder,
+  getDeliveryQuote,
   getUserOrders,
   getOrderById,
   updateOrderStatus,
@@ -14,6 +15,7 @@ import { createOrderSchema } from "../validators/orderValidator.js";
 
 const router = express.Router();
 
+router.post("/delivery-quote", getDeliveryQuote);
 router.post("/", protect, validate(createOrderSchema), createOrder);
 router.get("/my-orders", protect, getUserOrders);
 router.get("/single/:id", protect, getOrderById); // Specific ID route

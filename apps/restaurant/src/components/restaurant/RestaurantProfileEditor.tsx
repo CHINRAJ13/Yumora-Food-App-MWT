@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Camera, Save, MapPin, Clock, IndianRupee, Utensils, CheckCircle2, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Camera, Save, MapPin, Clock, IndianRupee, Utensils, CheckCircle2, Loader2, Crosshair } from "lucide-react";
 import * as api from "@/api";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,9 @@ interface ProfileEditorProps {
 }
 
 const RestaurantProfileEditor = ({ restaurant, onUpdate }: ProfileEditorProps) => {
+  const existingCoords = restaurant.location?.coordinates;
+  const hasValidCoords = Array.isArray(existingCoords) && existingCoords.length === 2 && !(existingCoords[0] === 0 && existingCoords[1] === 0);
+
   const [formData, setFormData] = useState({
     name: restaurant.name || "",
     cuisines: restaurant.cuisines?.join(", ") || "",
@@ -19,7 +21,34 @@ const RestaurantProfileEditor = ({ restaurant, onUpdate }: ProfileEditorProps) =
     priceForTwo: restaurant.priceForTwo || "",
     distance: restaurant.distance || "",
     isVeg: restaurant.isVeg || false,
+    lat: hasValidCoords ? String(existingCoords[1]) : "",
+    lng: hasValidCoords ? String(existingCoords[0]) : "",
   });
+  const [locatingGps, setLocatingGps] = useState(false);
+
+  const handleDetectKitchenGPS = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setLocatingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormData((prev) => ({
+          ...prev,
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+        }));
+        toast.success("Kitchen GPS coordinates captured! Save profile to apply.");
+        setLocatingGps(false);
+      },
+      () => {
+        toast.error("Unable to fetch GPS. You can enter coordinates manually.");
+        setLocatingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(restaurant.image || null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +67,7 @@ const RestaurantProfileEditor = ({ restaurant, onUpdate }: ProfileEditorProps) =
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
+      if ((key === "lat" || key === "lng") && !value.toString().trim()) return;
       data.append(key, value.toString());
     });
     if (image) {
@@ -145,7 +175,41 @@ const RestaurantProfileEditor = ({ restaurant, onUpdate }: ProfileEditorProps) =
 
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Distance (km)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Kitchen GPS Coordinates</Label>
+                <button
+                  type="button"
+                  onClick={handleDetectKitchenGPS}
+                  disabled={locatingGps}
+                  className="flex items-center gap-1 text-[10px] font-black text-primary hover:underline disabled:opacity-50"
+                >
+                  {locatingGps ? <Loader2 className="w-3 h-3 animate-spin" /> : <Crosshair className="w-3 h-3" />}
+                  {locatingGps ? "Detecting..." : "Detect Kitchen GPS"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  type="number"
+                  step="any"
+                  value={formData.lat}
+                  onChange={(e) => setFormData({ ...formData, lat: e.target.value })}
+                  placeholder="Lat (e.g. 11.0168)"
+                  className="h-11 bg-white border-gray-200 rounded-2xl text-xs font-bold focus:ring-primary/20"
+                />
+                <Input
+                  type="number"
+                  step="any"
+                  value={formData.lng}
+                  onChange={(e) => setFormData({ ...formData, lng: e.target.value })}
+                  placeholder="Lng (e.g. 76.9558)"
+                  className="h-11 bg-white border-gray-200 rounded-2xl text-xs font-bold focus:ring-primary/20"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 font-medium ml-1">Used for accurate distance-based delivery pricing</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Fallback Distance (km)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input 

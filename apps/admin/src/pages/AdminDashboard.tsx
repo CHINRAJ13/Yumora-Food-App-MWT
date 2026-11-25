@@ -22,17 +22,20 @@ import {
   ShieldAlert,
   Bell,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  MapPin
 } from "lucide-react";
 import AdminManagement from "@/components/admin/AdminManagement";
 import AdminPayments from "@/components/admin/AdminPayments";
+import AdminDeliveryPricing from "@/components/admin/AdminDeliveryPricing";
 
-type Tab = "overview" | "orders" | "payments" | "restaurants" | "users" | "approvals" | "catalog" | "admins";
+type Tab = "overview" | "orders" | "payments" | "pricing" | "restaurants" | "users" | "approvals" | "catalog" | "admins";
 
 const ALL_TABS: { id: Tab; label: string; icon: any; permission?: string }[] = [
   { id: "overview", label: "Overview", icon: BarChart3 }, // visible to all by default
   { id: "orders", label: "Orders", icon: ShoppingBag, permission: 'monitor_orders' },
   { id: "payments", label: "Payments", icon: CreditCard, permission: 'monitor_payments' },
+  { id: "pricing", label: "Delivery Pricing", icon: MapPin, permission: 'monitor_payments' },
   { id: "restaurants", label: "Restaurants", icon: ChefHat, permission: 'manage_restaurants' },
   { id: "users", label: "Users", icon: Users, permission: 'manage_users' },
   { id: "approvals", label: "Approvals", icon: ShieldAlert, permission: 'manage_approvals' },
@@ -111,6 +114,8 @@ const AdminDashboard = () => {
         return <AdminOrders />;
       case "payments":
         return <AdminPayments />;
+      case "pricing":
+        return <AdminDeliveryPricing />;
       case "restaurants":
         return <AdminRestaurants />;
       case "users":

@@ -16,6 +16,7 @@ import { getOrderByIdApi, cancelOrderApi } from '../../src/api';
 import { socketService } from '../../src/services/socketService';
 import { useCartStore } from '../../src/store/useCartStore';
 import { LiveTrackingMap } from '../../src/components/LiveTrackingMap';
+import { DeliveryCountdownTimer } from '../../src/components/DeliveryCountdownTimer';
 import * as Location from 'expo-location';
 
 const COMPACT_STAGES = [
@@ -377,17 +378,11 @@ export default function OrderDetailsAndTrackingScreen() {
               : 'Order placed & awaiting preparation'}
           </Text>
 
-          {isLive && (
-            <View className="flex-row items-center gap-1.5 mt-2.5">
-              <Ionicons name="time-outline" size={15} color="#ea580c" />
-              <Text className="text-xs font-black text-primary">
-                {liveETA ? `Estimated Arrival: ${liveETA}` : 'Estimated Arrival: 25 - 35 mins'}
-              </Text>
-              {liveDistance && (
-                <Text className="text-xs font-bold text-gray-500">({liveDistance} away)</Text>
-              )}
-            </View>
-          )}
+          <DeliveryCountdownTimer
+            order={order}
+            liveETA={liveETA}
+            liveDistance={liveDistance}
+          />
 
           {isCancelled && order?.cancellation?.reason && (
             <Text className="text-xs font-semibold text-red-600 mt-2">

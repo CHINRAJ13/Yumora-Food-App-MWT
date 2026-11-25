@@ -11,45 +11,264 @@ import Category from '../models/Category.js';
 import Banner from '../models/Banner.js';
 import { sendEmail } from '../utils/email.js';
 import { emitOrderUpdate, emitNewAvailableOrder, emitOrderAccepted, emitOrderAssignedToDriver } from '../socket.js';
+import { applyStatusTimestamps } from '../utils/orderTimers.js';
+import { settleOrderSplits } from '../services/walletService.js';
+
+const buildDateRangeSeries = (daysCount, dailyRows) => {
+  const rowMap = new Map(dailyRows.map((r) => [r._id, r]));
+  const result = [];
+  // Generate continuous IST dates ending today
+  const nowIstMs = Date.now() + 5.5 * 3600 * 1000;
+  const dayMs = 24 * 3600 * 1000;
+
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(nowIstMs - i * dayMs);
+    const isoDate = d.toISOString().slice(0, 10);
+    const hit = rowMap.get(isoDate);
+    result.push({
+      date: isoDate,
+      gmv: Math.round(hit?.gmv || 0),
+      profit: Math.round(hit?.profit || 0),
+      orders: hit?.orders || 0,
+      deliveredOrders: hit?.deliveredOrders || 0,
+    });
+  }
+  return result;
+};
 
 export const getStats = asyncHandler(async (req, res, next) => {
-  const orderCount = await Order.countDocuments();
-  const restaurantCount = await Restaurant.countDocuments();
-  const customerCount = await Customer.countDocuments();
-  
-  const gmv = await Order.aggregate([
-    { $match: { status: 'Delivered' } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+  const rangeParam = String(req.query.range || 'all').toLowerCase();
+  const isAllTime = rangeParam === 'all';
+  const rangeDays = rangeParam === '90d' ? 90 : rangeParam === '30d' ? 30 : 7;
+
+  const startDate = new Date(Date.now() - (rangeDays - 1) * 24 * 3600 * 1000);
+  startDate.setUTCHours(0, 0, 0, 0);
+  const facetMatch = isAllTime ? {} : { createdAt: { $gte: startDate } };
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [
+    orderCount,
+    restaurantCount,
+    customerCount,
+    activeDeliveryPartners,
+    todayOrders,
+    headlineTotals,
+    analyticsFacet,
+  ] = await Promise.all([
+    Order.countDocuments(facetMatch),
+    Restaurant.countDocuments(),
+    Customer.countDocuments(),
+    DeliveryPartner.countDocuments({ status: 'active', availability: true }),
+    Order.countDocuments({ createdAt: { $gte: todayStart } }),
+    Order.aggregate([
+      { $match: { ...facetMatch, status: 'Delivered' } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalAmount' },
+          platformNetRevenue: {
+            $sum: {
+              $ifNull: [
+                '$settlement.platformProfit',
+                {
+                  $add: [
+                    5,
+                    { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.1] },
+                  ],
+                },
+              ],
+            },
+          },
+          avgDeliveryMinutes: {
+            $avg: {
+              $ifNull: [
+                '$actualDeliveryMinutes',
+                {
+                  $cond: [
+                    { $and: [{ $ne: ['$deliveredAt', null] }, { $ne: ['$createdAt', null] }] },
+                    { $divide: [{ $subtract: ['$deliveredAt', '$createdAt'] }, 60000] },
+                    null,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: facetMatch },
+      {
+        $facet: {
+          dailyRaw: [
+            {
+              $group: {
+                _id: {
+                  $dateToString: {
+                    format: '%Y-%m-%d',
+                    date: '$createdAt',
+                    timezone: '+05:30',
+                  },
+                },
+                gmv: {
+                  $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, '$totalAmount', 0] },
+                },
+                profit: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ['$status', 'Delivered'] },
+                      {
+                        $ifNull: [
+                          '$settlement.platformProfit',
+                          {
+                            $add: [
+                              5,
+                              {
+                                $multiply: [
+                                  { $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] },
+                                  0.1,
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
+                },
+                orders: { $sum: 1 },
+                deliveredOrders: {
+                  $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] },
+                },
+              },
+            },
+          ],
+          statusBreakdown: [
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+          ],
+          hourlyRaw: [
+            {
+              $group: {
+                _id: { $hour: { date: '$createdAt', timezone: '+05:30' } },
+                orders: { $sum: 1 },
+              },
+            },
+          ],
+          topRestaurants: [
+            { $match: { status: { $ne: 'Cancelled' } } },
+            {
+              $group: {
+                _id: { $ifNull: ['$restaurantName', 'Yumora Kitchen'] },
+                revenue: { $sum: '$totalAmount' },
+                orders: { $sum: 1 },
+              },
+            },
+            { $sort: { revenue: -1 } },
+            { $limit: 5 },
+          ],
+          financialSplit: [
+            { $match: { status: 'Delivered' } },
+            {
+              $group: {
+                _id: null,
+                restaurantShare: {
+                  $sum: {
+                    $ifNull: [
+                      '$settlement.restaurantAmount',
+                      { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.9] },
+                    ],
+                  },
+                },
+                riderPayouts: {
+                  $sum: {
+                    $ifNull: [
+                      '$settlement.deliveryPartnerAmount',
+                      { $ifNull: ['$pricing.baseDeliveryFee', 30] },
+                    ],
+                  },
+                },
+                platformProfit: {
+                  $sum: {
+                    $ifNull: [
+                      '$settlement.platformProfit',
+                      {
+                        $add: [
+                          5,
+                          { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.1] },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ]),
   ]);
 
-  const platformProfitAggregate = await Order.aggregate([
-    { $match: { status: 'Delivered' } },
-    {
-      $group: {
-        _id: null,
-        total: {
-          $sum: {
-            $ifNull: [
-              '$settlement.platformProfit',
-              {
-                $add: [
-                  5,
-                  { $multiply: [{ $ifNull: ['$pricing.foodSubtotal', '$totalAmount'] }, 0.10] }
-                ]
-              }
-            ]
-          }
-        }
-      }
+  const facet = analyticsFacet[0] || {};
+  const dailyRows = facet.dailyRaw || [];
+  let effectiveDays = rangeDays;
+  if (isAllTime) {
+    if (dailyRows.length > 0) {
+      const sortedDates = dailyRows.map((r) => r._id).sort();
+      const firstMs = new Date(`${sortedDates[0]}T00:00:00Z`).getTime();
+      const nowIstMs = Date.now() + 5.5 * 3600 * 1000;
+      const spanDays = Math.ceil((nowIstMs - firstMs) / (24 * 3600 * 1000)) + 1;
+      effectiveDays = Math.min(180, Math.max(7, spanDays));
+    } else {
+      effectiveDays = 30;
     }
-  ]);
+  }
+  const dailyTrend = buildDateRangeSeries(effectiveDays, dailyRows);
+
+  const hourMap = new Map((facet.hourlyRaw || []).map((h) => [h._id, h.orders]));
+  const hourlyDemand = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    label: `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}${hour < 12 ? 'a' : 'p'}`,
+    orders: hourMap.get(hour) || 0,
+  }));
+
+  const statusBreakdown = (facet.statusBreakdown || []).map((s) => ({
+    status: s._id || 'Placed',
+    count: s.count,
+  }));
+
+  const topRestaurants = (facet.topRestaurants || []).map((r) => ({
+    name: r._id,
+    revenue: Math.round(r.revenue || 0),
+    orders: r.orders,
+  }));
+
+  const splitDoc = facet.financialSplit?.[0] || {};
+  const financialSplit = {
+    restaurantShare: Math.round(splitDoc.restaurantShare || 0),
+    riderPayouts: Math.round(splitDoc.riderPayouts || 0),
+    platformProfit: Math.round(splitDoc.platformProfit || 0),
+  };
+
+  const headline = headlineTotals[0] || {};
 
   sendResponse(res, 200, 'Stats retrieved successfully', {
+    range: isAllTime ? 'all' : `${rangeDays}d`,
     orderCount,
     restaurantCount,
     userCount: customerCount, // Keeping the key name userCount for frontend compatibility
-    totalRevenue: gmv[0]?.total || 0, // GMV
-    platformNetRevenue: Math.round(platformProfitAggregate[0]?.total || 0)
+    activeDeliveryPartners,
+    todayOrders,
+    avgDeliveryMinutes: headline.avgDeliveryMinutes ? Math.round(headline.avgDeliveryMinutes) : null,
+    totalRevenue: Math.round(headline.totalRevenue || 0), // GMV
+    platformNetRevenue: Math.round(headline.platformNetRevenue || 0),
+    dailyTrend,
+    statusBreakdown,
+    hourlyDemand,
+    topRestaurants,
+    financialSplit,
   });
 });
 
@@ -83,10 +302,21 @@ export const updateOrder = asyncHandler(async (req, res, next) => {
     return sendResponse(res, 200, 'Order cancelled and refund processed', cancelledOrder);
   }
 
-  const order = await Order.findByIdAndUpdate(id, { status }, { returnDocument: 'after' });
+  const existingOrder = await Order.findById(id);
   
-  if (!order) {
+  if (!existingOrder) {
     return next(new AppError('Order not found', 404));
+  }
+
+  applyStatusTimestamps(existingOrder, status);
+  const order = await existingOrder.save();
+
+  if (status === 'Delivered') {
+    try {
+      await settleOrderSplits(order._id);
+    } catch (err) {
+      console.error('Settlement error on admin updateOrder:', err);
+    }
   }
 
   emitOrderUpdate(id, status, order);

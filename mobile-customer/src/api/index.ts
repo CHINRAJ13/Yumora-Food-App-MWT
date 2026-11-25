@@ -18,6 +18,11 @@ export const registerApi = (userData: { name: string; email: string; password: s
   api.post('/auth/customer/register', userData);
 
 export const createOrderApi = (orderData: any) => api.post('/orders', orderData);
+export const getDeliveryQuoteApi = (data: {
+  restaurantId?: string | null;
+  customerLocation?: { lat: number; lng: number } | null;
+  foodSubtotal: number;
+}) => api.post('/orders/delivery-quote', data);
 export const getUserOrdersApi = () => api.get('/orders/my-orders');
 export const getOrderByIdApi = (orderId: string) => api.get(`/orders/single/${orderId}`);
 export const cancelOrderApi = (orderId: string, reason?: string) =>

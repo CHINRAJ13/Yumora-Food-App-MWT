@@ -9,7 +9,7 @@ export interface LocationResult {
 }
 
 /**
- * Request device location permissions and fetch current GPS coordinates.
+ * Request device location permissions and fetch exact GPS coordinates (<5-10m).
  * Reverse geocodes the coordinates via backend /locations/address API (with native fallback).
  */
 export async function getCurrentAddressFromGPS(): Promise<LocationResult> {
@@ -18,13 +18,22 @@ export async function getCurrentAddressFromGPS(): Promise<LocationResult> {
     throw new Error('Permission to access location was denied. Please allow location access in your device settings.');
   }
 
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
+  // Use High accuracy (satellite GPS chip) with fallback for indoor/weak signal
+  let location: Location.LocationObject;
+  try {
+    location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000,
+    });
+  } catch {
+    location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+  }
 
   const { latitude, longitude } = location.coords;
 
-  // 1. Try backend OpenRouteService reverse geocode endpoint (same as web app)
+  // 1. Try backend reverse geocode endpoint (Pelias + OSM Nominatim with exact PIN code)
   try {
     const res: any = await reverseGeocodeAddressApi(latitude, longitude);
     if (res && res.address && res.address !== 'Address not found') {
@@ -43,7 +52,7 @@ export async function getCurrentAddressFromGPS(): Promise<LocationResult> {
     console.log('Backend reverse geocoding fallback triggered:', err);
   }
 
-  // 2. Fallback to Expo Location native geocoding
+  // 2. Fallback to Expo Location native geocoding (Apple Maps / Google Play Services)
   try {
     const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
     if (geo) {

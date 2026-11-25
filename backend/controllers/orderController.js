@@ -4,6 +4,33 @@ import AppError from '../utils/AppError.js';
 import { sendResponse } from '../utils/responseFormatter.js';
 import * as orderService from '../services/orderService.js';
 import { emitOrderUpdate, emitNewOrder } from '../socket.js';
+import { calculateDeliveryQuote, getActivePricingConfig } from '../services/pricingService.js';
+
+/**
+ * @desc    Calculate distance-based delivery quote & ETA before checkout
+ * @route   POST /api/orders/delivery-quote
+ * @access  Public
+ */
+export const getDeliveryQuote = asyncHandler(async (req, res, next) => {
+  const { restaurantId, customerLocation, foodSubtotal = 0 } = req.body;
+
+  let restaurant = null;
+  if (restaurantId) {
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(restaurantId);
+    const query = isMongoId ? { $or: [{ id: restaurantId }, { _id: restaurantId }] } : { id: restaurantId };
+    restaurant = await Restaurant.findOne(query);
+  }
+
+  const config = await getActivePricingConfig();
+  const quote = calculateDeliveryQuote({
+    restaurant,
+    customerLocation,
+    foodSubtotal: Number(foodSubtotal) || 0,
+    config
+  });
+
+  sendResponse(res, 200, 'Delivery quote calculated', quote);
+});
 
 /**
  * @desc    Create a new order
@@ -31,12 +58,13 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     return next(new AppError('No items in order', 400));
   }
 
-  // Check if restaurant is accepting orders
+  // Check if restaurant is accepting orders & load restaurant profile for distance quote
+  let restaurant = null;
   const targetRestaurantId = restaurantId || items[0]?.restaurantId;
   if (targetRestaurantId) {
     const isMongoId = /^[0-9a-fA-F]{24}$/.test(targetRestaurantId);
     const query = isMongoId ? { $or: [{ id: targetRestaurantId }, { _id: targetRestaurantId }] } : { id: targetRestaurantId };
-    const restaurant = await Restaurant.findOne(query);
+    restaurant = await Restaurant.findOne(query);
     if (restaurant && restaurant.acceptsOrders === false) {
       return next(new AppError(`${restaurant.name || 'This restaurant'} is currently offline and not accepting orders.`, 400));
     }
@@ -47,8 +75,17 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     ? Number(pricing.foodSubtotal)
     : items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
+  const config = await getActivePricingConfig();
+  const quote = calculateDeliveryQuote({
+    restaurant,
+    customerLocation: location,
+    foodSubtotal,
+    config
+  });
+
   const packagingFee = pricing?.packagingFee !== undefined ? Number(pricing.packagingFee) : 20;
-  const deliveryFee = pricing?.deliveryFee !== undefined ? Number(pricing.deliveryFee) : (foodSubtotal > 199 ? 0 : 30);
+  const deliveryFee = pricing?.deliveryFee !== undefined ? Number(pricing.deliveryFee) : quote.deliveryFee;
+  const baseDeliveryFee = quote.baseDeliveryFee;
   const platformFee = pricing?.platformFee !== undefined ? Number(pricing.platformFee) : 5;
   const tax = pricing?.tax !== undefined ? Number(pricing.tax) : Math.round((foodSubtotal + packagingFee) * 0.05);
   const discount = pricing?.discount !== undefined ? Number(pricing.discount) : 0;
@@ -58,8 +95,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const commissionRate = 10;
   const platformCommission = Math.round((foodSubtotal * commissionRate) / 100);
   const restaurantAmount = foodSubtotal + packagingFee - platformCommission;
-  const deliveryPartnerAmount = deliveryFee > 0 ? deliveryFee : 30;
+  const deliveryPartnerAmount = Math.max(deliveryFee, baseDeliveryFee);
   const platformProfit = platformFee + platformCommission;
+
+  const estimatedDeliveryMinutes = quote.estimatedDeliveryMinutes || 35;
+  const targetDeliveryTime = new Date(Date.now() + estimatedDeliveryMinutes * 60000);
 
   // 2. Prepare Order Data (userId from auth middleware)
   const orderData = {
@@ -67,10 +107,14 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     customerName: req.user?.name || "Guest User",
     items,
     totalAmount: finalTotal,
+    estimatedDeliveryMinutes,
+    targetDeliveryTime,
+    deliveryDistanceKm: quote.distanceKm,
     pricing: {
       foodSubtotal,
       packagingFee,
       deliveryFee,
+      baseDeliveryFee,
       platformFee,
       tax,
       discount,

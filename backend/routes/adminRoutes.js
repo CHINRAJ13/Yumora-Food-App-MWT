@@ -19,6 +19,14 @@ import {
   getAdminPayouts,
   processAdminPayout
 } from '../controllers/adminPaymentController.js';
+import {
+  getDeliveryPricing,
+  updateDeliveryPricing,
+  addDeliveryPricingSlab,
+  updateDeliveryPricingSlab,
+  deleteDeliveryPricingSlab,
+  resetDeliveryPricing
+} from '../controllers/adminPricingController.js';
 import { protect, restrictTo, requireAdminPermission } from '../middleware/auth.js';
 import { uploadRestaurant, uploadCategory, uploadBanner } from '../middleware/upload.js';
 
@@ -43,6 +51,14 @@ router.get('/payments/refunds', requireAdminPermission('monitor_payments'), getP
 router.get('/payments/settlements', requireAdminPermission('monitor_payments'), getSettlementSplits);
 router.get('/payments/payouts', requireAdminPermission('monitor_payments'), getAdminPayouts);
 router.patch('/payments/payouts/:id', requireAdminPermission('monitor_payments'), processAdminPayout);
+
+// Distance-Based Delivery Pricing Management
+router.get('/delivery-pricing', requireAdminPermission('monitor_payments'), getDeliveryPricing);
+router.put('/delivery-pricing', requireAdminPermission('monitor_payments'), updateDeliveryPricing);
+router.post('/delivery-pricing/slabs', requireAdminPermission('monitor_payments'), addDeliveryPricingSlab);
+router.patch('/delivery-pricing/slabs/:slabId', requireAdminPermission('monitor_payments'), updateDeliveryPricingSlab);
+router.delete('/delivery-pricing/slabs/:slabId', requireAdminPermission('monitor_payments'), deleteDeliveryPricingSlab);
+router.post('/delivery-pricing/reset', requireAdminPermission('monitor_payments'), resetDeliveryPricing);
 
 // Delivery Persons (needed for orders/restaurants)
 router.get('/delivery-persons', getDeliveryPersons);

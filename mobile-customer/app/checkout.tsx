@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   createOrderApi,
   createRazorpayOrderApi,
   verifyRazorpayPaymentApi,
+  getDeliveryQuoteApi,
 } from '../src/api';
 import { getCurrentAddressFromGPS } from '../src/services/locationService';
 import { RazorpayCheckoutModal } from '../src/components/RazorpayCheckoutModal';
@@ -31,6 +32,11 @@ export default function CheckoutScreen() {
   const [phone, setPhone] = useState(user?.phone || '9876543210');
   const [loading, setLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [deliveryQuote, setDeliveryQuote] = useState<{
+    distanceKm: number;
+    deliveryFee: number;
+    estimatedDeliveryMinutes: number;
+  } | null>(null);
 
   // Razorpay Checkout Modal state
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -59,10 +65,30 @@ export default function CheckoutScreen() {
 
   const foodSubtotal = getTotalPrice();
   const packagingFee = items.length > 0 ? 20 : 0;
-  const deliveryFee = foodSubtotal > 199 || items.length === 0 ? 0 : 30;
+  const fallbackDeliveryFee = foodSubtotal > 199 || items.length === 0 ? 0 : 30;
+  const deliveryFee = items.length === 0 ? 0 : (deliveryQuote ? deliveryQuote.deliveryFee : fallbackDeliveryFee);
   const platformFee = items.length > 0 ? 5 : 0;
   const tax = Math.round((foodSubtotal + packagingFee) * 0.05);
   const totalAmount = foodSubtotal + packagingFee + deliveryFee + platformFee + tax;
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    let active = true;
+    getDeliveryQuoteApi({
+      restaurantId,
+      customerLocation: coords,
+      foodSubtotal,
+    })
+      .then((res: any) => {
+        if (active && res?.data) {
+          setDeliveryQuote(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [items.length, restaurantId, coords, foodSubtotal]);
 
   // Step 1: Initiate Razorpay payment by creating server order
   const handleInitiatePayment = async () => {
@@ -276,7 +302,10 @@ export default function CheckoutScreen() {
             <Text className="text-xs font-bold text-gray-800">₹{packagingFee}</Text>
           </View>
           <View className="flex-row justify-between py-1">
-            <Text className="text-xs font-semibold text-gray-500">Delivery Fee</Text>
+            <Text className="text-xs font-semibold text-gray-500">
+              Delivery Fee
+              {deliveryQuote ? ` (${deliveryQuote.distanceKm} km • ~${deliveryQuote.estimatedDeliveryMinutes} mins)` : ''}
+            </Text>
             <Text className="text-xs font-bold text-gray-800">
               {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
             </Text>

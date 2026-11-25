@@ -56,7 +56,7 @@ export const getOrderById = (id: string) => api.get(`/orders/${id}`);
 export const updateOrderStatus = (id: string, status: string) => api.patch(`/orders/update/${id}`, { status });
 
 // Admin Methods
-export const getAdminStats = () => api.get("/admin/stats");
+export const getAdminStats = (range: string = "7d") => api.get(`/admin/stats?range=${range}`);
 export const getAdminOrders = () => api.get("/admin/orders");
 export const updateAdminOrder = (id: string, status: string) => api.patch(`/admin/orders/${id}`, { status });
 
@@ -127,3 +127,11 @@ export const getAdminPaymentSettlements = (params?: any) => api.get("/admin/paym
 export const getAdminPayouts = (status?: string) => api.get(`/admin/payments/payouts${status ? `?status=${status}` : ''}`);
 export const processAdminPayout = (id: string, data: { status: string; adminComment?: string; transactionReference?: string }) =>
   api.patch(`/admin/payments/payouts/${id}`, data);
+
+// Admin - Distance-Based Delivery Pricing
+export const getAdminDeliveryPricing = () => api.get("/admin/delivery-pricing");
+export const updateAdminDeliveryPricing = (data: any) => api.put("/admin/delivery-pricing", data);
+export const addAdminDeliverySlab = (data: any) => api.post("/admin/delivery-pricing/slabs", data);
+export const updateAdminDeliverySlab = (slabId: string, data: any) => api.patch(`/admin/delivery-pricing/slabs/${slabId}`, data);
+export const deleteAdminDeliverySlab = (slabId: string) => api.delete(`/admin/delivery-pricing/slabs/${slabId}`);
+export const resetAdminDeliveryPricing = () => api.post("/admin/delivery-pricing/reset");

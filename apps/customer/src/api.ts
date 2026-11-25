@@ -70,6 +70,11 @@ export const resetPassword = (token: string, data: any) => api.patch(`/auth/rese
 
 export const placeOrder = (orderData: any) => api.post('/orders', orderData);
 export const createOrder = (data: any) => api.post("/orders", data);
+export const getDeliveryQuote = (data: {
+  restaurantId?: string | null;
+  customerLocation?: { lat: number; lng: number } | null;
+  foodSubtotal: number;
+}) => api.post('/orders/delivery-quote', data);
 export const addOrderReview = (orderId: string, data: any) => api.post(`/orders/${orderId}/review`, data);
 export const getMyOrders = () => api.get('/orders/my-orders');
 export const getOrderById = (id: string) => api.get(`/orders/single/${id}`);

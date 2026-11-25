@@ -10,6 +10,7 @@ import {
   Image,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ import { RestaurantCard } from '../../src/components/RestaurantCard';
 import { ProfileMenuModal } from '../../src/components/ProfileMenuModal';
 import { getRestaurants, getCategories, getUserOrdersApi } from '../../src/api';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { getCurrentAddressFromGPS } from '../../src/services/locationService';
 import { Restaurant } from '../../src/types';
 
 type VegFilterMode = 'all' | 'veg' | 'non-veg';
@@ -240,30 +242,61 @@ export default function HomeScreen() {
     }
   };
 
+  const [isLocating, setIsLocating] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+
+  const handleQuickDetectLocation = async () => {
+    setIsLocating(true);
+    try {
+      const loc = await getCurrentAddressFromGPS();
+      setCurrentAddress(loc.address);
+      Alert.alert('📍 Location Updated', `Delivering to:\n${loc.address}`);
+    } catch (err: any) {
+      Alert.alert('Location Access', err?.message || 'Could not fetch current GPS location.');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   const displayAddress = useMemo(() => {
+    if (currentAddress) {
+      return currentAddress.split(',')[0].trim();
+    }
     if (user?.address) {
       return user.address.split(',')[0].trim();
     }
     return 'Coimbatore Central';
-  }, [user?.address]);
+  }, [currentAddress, user?.address]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Top Location & Profile Header */}
       <View className="px-5 pt-3 pb-3 bg-white border-b border-gray-100 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+        <TouchableOpacity
+          onPress={handleQuickDetectLocation}
+          disabled={isLocating}
+          activeOpacity={0.7}
+          className="flex-row items-center gap-2.5 flex-1 mr-2"
+        >
           <View className="w-8 h-8 rounded-full bg-orange-100 items-center justify-center">
-            <Ionicons name="location-sharp" size={16} color="#ea580c" />
+            {isLocating ? (
+              <ActivityIndicator size="small" color="#ea580c" />
+            ) : (
+              <Ionicons name="location-sharp" size={16} color="#ea580c" />
+            )}
           </View>
           <View className="flex-1">
-            <Text className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-              Delivering to
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                Delivering to
+              </Text>
+              <Ionicons name="chevron-down" size={10} color="#ea580c" />
+            </View>
             <Text numberOfLines={1} className="text-sm font-black text-gray-900">
               {displayAddress}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* User Profile Avatar / Sign In Button */}
         {token && user ? (

@@ -34,6 +34,9 @@ const Navbar = () => {
 
   const navLinks = [...baseLinks, ...roleLinks];
 
+  const isNavActive = (to: string) =>
+    to === "/orders" ? location.pathname.startsWith("/orders") : location.pathname === to;
+
   const handleLogout = async () => {
     await logout();
     setIsMobileMenuOpen(false);
@@ -71,26 +74,29 @@ const Navbar = () => {
 
           {/* Nav Links - Desktop Only */}
           <div className="hidden lg:flex items-center gap-1 mx-auto">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                  location.pathname === link.to
-                    ? "text-orange-500 bg-orange-50"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                }`}
-              >
-                <link.icon className="w-4 h-4" />
-                {link.label}
-                {location.pathname === link.to && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="absolute -bottom-[1px] left-2 right-2 h-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
-                  />
-                )}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const active = isNavActive(link.to);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                    active
+                      ? "text-orange-500 bg-orange-50"
+                      : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  <link.icon className="w-4 h-4" />
+                  {link.label}
+                  {active && (
+                    <motion.div
+                      layoutId="nav-indicator"
+                      className="absolute -bottom-[1px] left-2 right-2 h-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Actions */}
@@ -191,21 +197,24 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-colors ${
-                      location.pathname === link.to
-                        ? "bg-orange-50 text-orange-600"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <link.icon className={`w-5 h-5 ${location.pathname === link.to ? "text-orange-500" : "text-gray-400"}`} />
-                    {link.label}
-                  </Link>
-                ))}
+                {navLinks.map((link) => {
+                  const active = isNavActive(link.to);
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-colors ${
+                        active
+                          ? "bg-orange-50 text-orange-600"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                    >
+                      <link.icon className={`w-5 h-5 ${active ? "text-orange-500" : "text-gray-400"}`} />
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </div>
               
               <div className="p-5 border-t border-gray-100 flex items-center justify-between">

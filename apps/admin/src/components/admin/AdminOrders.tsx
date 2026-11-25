@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 import { getAdminOrders, updateAdminOrder, getDeliveryPersons, assignDeliveryPerson } from "@/api";
 import { format } from "date-fns";
@@ -15,8 +15,105 @@ import {
   Filter,
   Eye,
   Bike,
-  Package
+  Package,
+  Timer,
+  AlertTriangle,
+  Activity
 } from "lucide-react";
+
+const getOrderDurationInfo = (order: any, nowMs: number) => {
+  const createdMs = order?.createdAt ? new Date(order.createdAt).getTime() : nowMs;
+  const estMins = order?.estimatedDeliveryMinutes || 35;
+  const isDelivered = order?.status === "Delivered";
+  const isCancelled = order?.status === "Cancelled";
+  const isActive = !isDelivered && !isCancelled;
+
+  // Stage breakdown in minutes
+  const prepMins = order?.readyForPickupAt
+    ? Math.max(1, Math.round((new Date(order.readyForPickupAt).getTime() - createdMs) / 60000))
+    : null;
+  const waitMins =
+    order?.readyForPickupAt && order?.pickedUpAt
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(order.pickedUpAt).getTime() - new Date(order.readyForPickupAt).getTime()) /
+              60000
+          )
+        )
+      : null;
+  const transitMins =
+    order?.pickedUpAt && isDelivered && order?.deliveredAt
+      ? Math.max(
+          1,
+          Math.round(
+            (new Date(order.deliveredAt).getTime() - new Date(order.pickedUpAt).getTime()) / 60000
+          )
+        )
+      : null;
+
+  if (isDelivered) {
+    const deliveredMs = order?.deliveredAt
+      ? new Date(order.deliveredAt).getTime()
+      : order?.updatedAt
+      ? new Date(order.updatedAt).getTime()
+      : nowMs;
+    const totalMins =
+      order?.actualDeliveryMinutes || Math.max(1, Math.round((deliveredMs - createdMs) / 60000));
+    return {
+      isActive: false,
+      isDelivered: true,
+      isCancelled: false,
+      totalMins,
+      estMins,
+      slaState: totalMins > estMins ? "breached" : "ontime",
+      display: `${totalMins}m total`,
+      prepMins,
+      waitMins,
+      transitMins,
+    };
+  }
+
+  if (isCancelled) {
+    const cancelledMs = order?.cancellation?.cancelledAt
+      ? new Date(order.cancellation.cancelledAt).getTime()
+      : order?.updatedAt
+      ? new Date(order.updatedAt).getTime()
+      : nowMs;
+    const totalMins = Math.max(1, Math.round((cancelledMs - createdMs) / 60000));
+    return {
+      isActive: false,
+      isDelivered: false,
+      isCancelled: true,
+      totalMins,
+      estMins,
+      slaState: "cancelled",
+      display: `Stopped @ ${totalMins}m`,
+      prepMins,
+      waitMins,
+      transitMins,
+    };
+  }
+
+  const elapsedSec = Math.max(0, Math.floor((nowMs - createdMs) / 1000));
+  const mins = Math.floor(elapsedSec / 60);
+  const secs = elapsedSec % 60;
+  const ratio = mins / estMins;
+  const slaState = ratio >= 1 ? "breached" : ratio >= 0.75 ? "warning" : "normal";
+
+  return {
+    isActive,
+    isDelivered: false,
+    isCancelled: false,
+    totalMins: mins,
+    estMins,
+    slaState,
+    display: `${mins}m ${String(secs).padStart(2, "0")}s`,
+    prepMins,
+    waitMins,
+    transitMins,
+  };
+};
 
 export const StatusBadge = ({ status }: { status: string }) => {
   const configs: any = {
@@ -44,10 +141,20 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [slaFilter, setSlaFilter] = useState<"all" | "active" | "warning" | "breached">("all");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [deliveryPersons, setDeliveryPersons] = useState<any[]>([]);
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
+
+  // Single 1-second global ticker for active orders
+  useEffect(() => {
+    const hasActive = orders.some((o) => !["Delivered", "Cancelled"].includes(o.status));
+    if (!hasActive) return;
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [orders]);
 
   useEffect(() => {
     fetchOrders();
@@ -141,17 +248,148 @@ const AdminOrders = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order._id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          order.email?.toLowerCase().includes(searchTerm.toLowerCase());
+  const slaMetrics = useMemo(() => {
+    const delivered = orders.filter((o) => o.status === "Delivered");
+    const active = orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status));
+
+    let totalDeliveryMins = 0;
+    let onTimeCount = 0;
+    delivered.forEach((o) => {
+      const info = getOrderDurationInfo(o, nowMs);
+      totalDeliveryMins += info.totalMins;
+      if (info.slaState === "ontime") onTimeCount += 1;
+    });
+
+    let activeWarningCount = 0;
+    let activeBreachedCount = 0;
+    active.forEach((o) => {
+      const info = getOrderDurationInfo(o, nowMs);
+      if (info.slaState === "warning") activeWarningCount += 1;
+      if (info.slaState === "breached") activeBreachedCount += 1;
+    });
+
+    const avgFulfillmentMins = delivered.length > 0 ? (totalDeliveryMins / delivered.length).toFixed(1) : "—";
+    const onTimeRate = delivered.length > 0 ? Math.round((onTimeCount / delivered.length) * 100) : 100;
+
+    return {
+      avgFulfillmentMins,
+      onTimeRate,
+      activeCount: active.length,
+      activeWarningCount,
+      activeBreachedCount,
+    };
+  }, [orders, nowMs]);
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    let matchesSla = true;
+    if (slaFilter !== "all") {
+      const info = getOrderDurationInfo(order, nowMs);
+      if (slaFilter === "active") matchesSla = info.isActive;
+      if (slaFilter === "warning") matchesSla = info.isActive && info.slaState === "warning";
+      if (slaFilter === "breached") matchesSla = info.slaState === "breached";
+    }
+
+    return matchesSearch && matchesStatus && matchesSla;
   });
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-      <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-gray-900">Recent Orders</h2>
+    <div className="space-y-6">
+      {/* SLA & Delivery Duration KPI Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 text-primary flex items-center justify-center">
+            <Timer className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Avg Delivery Time</p>
+            <p className="text-xl font-black text-gray-900">
+              {slaMetrics.avgFulfillmentMins !== "—" ? `${slaMetrics.avgFulfillmentMins} mins` : "—"}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">SLA On-Time Rate</p>
+            <p className="text-xl font-black text-emerald-700">{slaMetrics.onTimeRate}%</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSlaFilter(slaFilter === "active" ? "all" : "active")}
+          className={`text-left rounded-3xl p-5 border shadow-sm flex items-center gap-4 transition-all ${
+            slaFilter === "active"
+              ? "bg-blue-50 border-blue-300"
+              : "bg-white border-gray-100 hover:border-blue-200"
+          }`}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <Activity className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Active In Pipeline</p>
+            <p className="text-xl font-black text-gray-900">{slaMetrics.activeCount}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSlaFilter(slaFilter === "breached" ? "all" : "breached")}
+          className={`text-left rounded-3xl p-5 border shadow-sm flex items-center gap-4 transition-all ${
+            slaFilter === "breached"
+              ? "bg-red-50 border-red-300"
+              : "bg-white border-gray-100 hover:border-red-200"
+          }`}
+        >
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+            slaMetrics.activeBreachedCount > 0 ? "bg-red-100 text-red-600 animate-pulse" : "bg-gray-50 text-gray-400"
+          }`}>
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">SLA Breached</p>
+            <p className={`text-xl font-black ${slaMetrics.activeBreachedCount > 0 ? "text-red-600" : "text-gray-900"}`}>
+              {slaMetrics.activeBreachedCount} active
+            </p>
+          </div>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">Recent Orders & SLA Monitor</h2>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {([
+                { id: "all", label: "All Orders" },
+                { id: "active", label: "Active Only" },
+                { id: "warning", label: `At Risk (${slaMetrics.activeWarningCount})` },
+                { id: "breached", label: "SLA Breached" },
+              ] as const).map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setSlaFilter(pill.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                    slaFilter === pill.id
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
         
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
@@ -191,6 +429,7 @@ const AdminOrders = () => {
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Order Details</th>
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Customer</th>
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Amount</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Duration & SLA</th>
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Rider</th>
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
               <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
@@ -222,6 +461,40 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-6 py-6">
                     <span className="font-black text-gray-900">₹{order.totalAmount}</span>
+                    {order.deliveryDistanceKm && (
+                      <p className="text-[10px] font-bold text-gray-400 mt-0.5">{order.deliveryDistanceKm} km</p>
+                    )}
+                  </td>
+                  <td className="px-6 py-6">
+                    {(() => {
+                      const dur = getOrderDurationInfo(order, nowMs);
+                      return (
+                        <div className="space-y-1">
+                          <div
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide ${
+                              dur.slaState === "breached"
+                                ? `bg-red-100 text-red-700 ${dur.isActive ? "animate-pulse" : ""}`
+                                : dur.slaState === "warning"
+                                ? "bg-amber-100 text-amber-800"
+                                : dur.slaState === "cancelled"
+                                ? "bg-gray-100 text-gray-500"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            <Timer className="w-3 h-3" />
+                            <span className="font-mono">{dur.display}</span>
+                            {dur.isActive && <span className="opacity-70">/ {dur.estMins}m</span>}
+                          </div>
+                          {(dur.prepMins !== null || dur.waitMins !== null || dur.transitMins !== null) && (
+                            <p className="text-[9px] font-bold text-gray-400 whitespace-nowrap">
+                              {dur.prepMins !== null ? `Prep ${dur.prepMins}m` : ""}
+                              {dur.waitMins !== null ? ` • Wait ${dur.waitMins}m` : ""}
+                              {dur.transitMins !== null ? ` • Transit ${dur.transitMins}m` : ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-6">
                     {order.deliveryPersonName ? (
@@ -285,6 +558,7 @@ const AdminOrders = () => {
             <p className="text-gray-400 font-bold">No orders found matching your criteria</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

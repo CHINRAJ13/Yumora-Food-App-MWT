@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Link, useNavigate } from "react-router-dom";
@@ -22,6 +22,12 @@ const Checkout = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [locationCoords, setLocationCoords] = useState<{ lat: number, lng: number } | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<{
+    distanceKm: number;
+    deliveryFee: number;
+    estimatedDeliveryMinutes: number;
+    isEstimatedDistance: boolean;
+  } | null>(null);
 
   const savedAddress = JSON.parse(localStorage.getItem("yumora-saved-address") || "{}");
 
@@ -51,29 +57,64 @@ const Checkout = () => {
         const { latitude, longitude } = position.coords;
         setLocationCoords({ lat: latitude, lng: longitude });
 
+        let addressFilled = false;
         try {
           const res: any = await api.reverseGeocodeAddress(latitude, longitude);
-          if (res.address) {
+          if (res?.address && res.address !== 'Address not found') {
             setValue("line1", res.address);
             if (res.pincode) {
               setValue("pincode", res.pincode);
             }
+            addressFilled = true;
             toast.success("Address & Pincode auto-filled! 📍");
-          } else {
-            toast.success("Location captured! 📍");
           }
         } catch (err) {
-          toast.success("Location captured! 📍");
+          console.log("Backend reverse geocode failed, trying client fallback:", err);
+        }
+
+        // Direct client fallback to OpenStreetMap Nominatim if address was not filled
+        if (!addressFilled) {
+          try {
+            const osmRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+            const osmData = await osmRes.json();
+            if (osmData?.display_name) {
+              const addr = osmData.address || {};
+              const shortAddr = [
+                addr.road || addr.pedestrian || addr.suburb,
+                addr.suburb || addr.city_district,
+                addr.city || addr.town
+              ].filter(Boolean).join(", ") || osmData.display_name.split(",").slice(0, 3).join(", ");
+
+              setValue("line1", shortAddr);
+              if (addr.postcode) {
+                setValue("pincode", addr.postcode);
+              }
+              addressFilled = true;
+              toast.success("Address auto-filled via GPS! 📍");
+            }
+          } catch {
+            // Coordinate fallback
+          }
+        }
+
+        if (!addressFilled) {
+          toast.success("Location coordinates captured! 📍");
         }
 
         setFetchingLocation(false);
       },
       (error) => {
         console.error("Location error:", error);
-        toast.error("Failed to get location. Please enter address manually.");
+        if (error.code === 1) {
+          toast.error("Location permission denied. Please allow GPS access.");
+        } else if (error.code === 3) {
+          toast.error("Location request timed out. Please enter address manually.");
+        } else {
+          toast.error("Failed to get location. Please enter address manually.");
+        }
         setFetchingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -106,10 +147,31 @@ const Checkout = () => {
   }, [coupon, totalPrice]);
 
   const packagingFee = items.length > 0 ? 20 : 0;
-  const deliveryFee = totalPrice > 199 ? 0 : 30;
+  const fallbackDeliveryFee = totalPrice > 199 ? 0 : 30;
+  const deliveryFee = items.length === 0 ? 0 : (deliveryQuote ? deliveryQuote.deliveryFee : fallbackDeliveryFee);
   const platformFee = items.length > 0 ? 5 : 0;
   const taxes = Math.round((totalPrice + packagingFee) * 0.05);
   const grandTotal = Math.round(totalPrice - discount + packagingFee + deliveryFee + platformFee + taxes);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    let active = true;
+    api
+      .getDeliveryQuote({
+        restaurantId: items[0]?.restaurantId || null,
+        customerLocation: locationCoords,
+        foodSubtotal: totalPrice,
+      })
+      .then((res: any) => {
+        if (active && res?.data) {
+          setDeliveryQuote(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [items, locationCoords, totalPrice]);
 
   const playSuccessSound = () => {
     try {
@@ -225,7 +287,7 @@ const Checkout = () => {
             toast.success("Payment Successful 🎉");
             clearCart();
             showSuccessToast(createRes.data._id);
-            navigate("/orders");
+            navigate(createRes?.data?._id ? `/orders/${createRes.data._id}` : "/orders");
           } catch (err) {
             toast.error("Payment verification or order placement failed");
           }
@@ -382,7 +444,13 @@ const Checkout = () => {
                 <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Item Total</span><span>₹{totalPrice}</span></div>
                 {discount > 0 && <div className="flex justify-between text-xs font-bold text-emerald-500 uppercase tracking-wider"><span>Discount</span><span>-₹{discount}</span></div>}
                 <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Restaurant Packaging</span><span>₹{packagingFee}</span></div>
-                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Delivery Partner Fee</span><span>{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span></div>
+                <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <span>
+                    Delivery Partner Fee
+                    {deliveryQuote ? ` (${deliveryQuote.distanceKm} km • ~${deliveryQuote.estimatedDeliveryMinutes} mins)` : ""}
+                  </span>
+                  <span>{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
+                </div>
                 <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Platform Fee</span><span>₹{platformFee}</span></div>
                 <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider"><span>Govt. Taxes (5%)</span><span>₹{taxes}</span></div>
               </div>

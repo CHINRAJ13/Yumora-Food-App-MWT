@@ -22,6 +22,7 @@ const orderSchema = new mongoose.Schema({
     foodSubtotal: { type: Number, default: 0 },
     packagingFee: { type: Number, default: 0 },
     deliveryFee: { type: Number, default: 0 },
+    baseDeliveryFee: { type: Number, default: 0 },
     platformFee: { type: Number, default: 5 },
     tax: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -97,6 +98,14 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  preparingAt: {
+    type: Date,
+    default: null
+  },
+  readyForPickupAt: {
+    type: Date,
+    default: null
+  },
   assignedAt: {
     type: Date,
     default: null
@@ -107,6 +116,22 @@ const orderSchema = new mongoose.Schema({
   },
   deliveredAt: {
     type: Date,
+    default: null
+  },
+  estimatedDeliveryMinutes: {
+    type: Number,
+    default: 35
+  },
+  targetDeliveryTime: {
+    type: Date,
+    default: null
+  },
+  actualDeliveryMinutes: {
+    type: Number,
+    default: null
+  },
+  deliveryDistanceKm: {
+    type: Number,
     default: null
   },
   deliveryNotes: {

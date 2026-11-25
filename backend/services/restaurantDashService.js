@@ -1,5 +1,6 @@
 import Order from '../models/Order.js';
 import Restaurant from '../models/Restaurant.js';
+import { applyStatusTimestamps } from '../utils/orderTimers.js';
 
 /**
  * Get the restaurant linked to the current user
@@ -51,7 +52,7 @@ export const updateOrderByRestaurant = async (orderId, restaurantId, newStatus) 
     throw new Error('Order not found or does not belong to this restaurant');
   }
 
-  order.status = newStatus;
+  applyStatusTimestamps(order, newStatus);
   await order.save();
   return order;
 };

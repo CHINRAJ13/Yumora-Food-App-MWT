@@ -5,9 +5,10 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   roles?: string[];
   requiredRole?: string;
+  permission?: string;
 }
 
-const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, roles, requiredRole, permission }: ProtectedRouteProps) => {
   const { isAuthenticated, user, loading } = useAuthStore();
   const location = useLocation();
 
@@ -22,16 +23,23 @@ const ProtectedRoute = ({ children, roles, requiredRole }: ProtectedRouteProps) 
   // Unify role checking: support both 'roles' array and 'requiredRole' string
   const allowedRoles = roles || (requiredRole ? [requiredRole] : null);
 
-  if (allowedRoles && user && !allowedRoles.some(r => user.type === r)) {
-    // Redirect to appropriate dashboard based on actual roles
-    if (user.type === 'admin') return <Navigate to="/admin" replace />;
+  if (allowedRoles && user && !allowedRoles.some((r) => user.type === r)) {
+    if (user.type === 'admin') return <Navigate to="/overview" replace />;
     if (user.type === 'delivery') return <Navigate to="/delivery" replace />;
     if (user.type === 'restaurant') return <Navigate to="/restaurant" replace />;
     return <Navigate to="/" replace />;
+  }
+
+  // Granular admin permission check
+  if (permission && user?.type === 'admin') {
+    const perms = user.permissions || [];
+    const hasAccess = perms.includes('super_admin') || perms.includes(permission);
+    if (!hasAccess) {
+      return <Navigate to="/overview" replace />;
+    }
   }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
-

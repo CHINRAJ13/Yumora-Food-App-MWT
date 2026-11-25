@@ -55,8 +55,10 @@ export const init = (httpServer) => {
      * data: { orderId, role: 'driver' | 'customer' }
      */
     socket.on('join-tracking', ({ orderId, role }) => {
+      if (!orderId) return;
       const room = `tracking_${orderId}`;
       socket.join(room);
+      socket.join(orderId);
       socket.trackingOrderId = orderId;
       socket.trackingRole = role;
 
@@ -65,6 +67,17 @@ export const init = (httpServer) => {
       }
 
       console.log(`[Tracking] ${role} ${socket.id} joined room ${room}`);
+
+      // If customer joins and driver location is already known, immediately emit it to this customer
+      if (role === 'customer' && trackingSessions[orderId]?.driver?.lat) {
+        socket.emit('location-updated', {
+          lat: trackingSessions[orderId].driver.lat,
+          lng: trackingSessions[orderId].driver.lng,
+          distance: trackingSessions[orderId].lastDistance || null,
+          eta: trackingSessions[orderId].lastEta || null,
+          orderId
+        });
+      }
     });
 
     /**
@@ -73,7 +86,13 @@ export const init = (httpServer) => {
      */
     socket.on('location-update', async (data) => {
       const { lat, lng, orderId } = data;
-      if (!orderId || !trackingSessions[orderId]) return;
+      if (!orderId) return;
+
+      if (!trackingSessions[orderId]) {
+        trackingSessions[orderId] = {};
+      }
+
+      socket.join(`tracking_${orderId}`);
 
       // Store driver location
       trackingSessions[orderId].driver = { lat, lng, socketId: socket.id };
@@ -81,8 +100,8 @@ export const init = (httpServer) => {
       const session = trackingSessions[orderId];
 
       // Calculate distance/ETA if customer location is known
-      let distance = null;
-      let eta = null;
+      let distance = session.lastDistance || null;
+      let eta = session.lastEta || null;
 
       if (session.customer?.lat && session.driver?.lat) {
         try {
@@ -90,32 +109,72 @@ export const init = (httpServer) => {
             { lat: session.driver.lat, lng: session.driver.lng },
             { lat: session.customer.lat, lng: session.customer.lng }
           );
-          distance = result.distance;
-          eta = result.duration;
+          if (result && result.distance !== 'N/A') {
+            distance = result.distance;
+            eta = result.duration;
+            session.lastDistance = distance;
+            session.lastEta = eta;
+          }
         } catch (err) {
           console.error('[Tracking] ETA calculation failed:', err.message);
         }
       }
 
-      // Broadcast to everyone in the tracking room
-      io.to(`tracking_${orderId}`).emit('location-updated', {
+      // Broadcast to both tracking and order rooms
+      const payload = {
         lat,
         lng,
         distance,
         eta,
         orderId
-      });
+      };
+
+      io.to(`tracking_${orderId}`).emit('location-updated', payload);
+      io.to(orderId).emit('location-updated', payload);
     });
 
     /**
      * Customer sends their static location once when joining tracking.
      * data: { lat, lng, orderId }
      */
-    socket.on('customer-location', (data) => {
+    socket.on('customer-location', async (data) => {
       const { lat, lng, orderId } = data;
-      if (!orderId || !trackingSessions[orderId]) return;
+      if (!orderId) return;
+
+      if (!trackingSessions[orderId]) {
+        trackingSessions[orderId] = {};
+      }
+
       trackingSessions[orderId].customer = { lat, lng, socketId: socket.id };
       console.log(`[Tracking] Customer location set for order ${orderId}`);
+
+      // If driver position is already known, immediately calculate & emit ETA/distance
+      const session = trackingSessions[orderId];
+      if (session.driver?.lat && session.driver?.lng) {
+        try {
+          const result = await calculateDistanceAndETA(
+            { lat: session.driver.lat, lng: session.driver.lng },
+            { lat, lng }
+          );
+          if (result && result.distance !== 'N/A') {
+            session.lastDistance = result.distance;
+            session.lastEta = result.duration;
+
+            const payload = {
+              lat: session.driver.lat,
+              lng: session.driver.lng,
+              distance: result.distance,
+              eta: result.duration,
+              orderId
+            };
+
+            io.to(`tracking_${orderId}`).emit('location-updated', payload);
+            io.to(orderId).emit('location-updated', payload);
+          }
+        } catch (err) {
+          console.error('[Tracking] Immediate ETA calculation failed:', err.message);
+        }
+      }
     });
 
     // ─── Disconnect ───

@@ -207,6 +207,9 @@ export const useActiveTripStore = create<ActiveTripState>((set, get) => ({
     if (isTracking && locationSubscription) return;
 
     try {
+      // Ensure driver socket is registered in tracking room
+      deliverySocketService.joinTracking(orderId);
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.warn('[GPS] Permission to access location was denied');

@@ -199,6 +199,21 @@ export default function OrdersScreen() {
                     </Text>
                     <Text className="text-xs text-gray-500 font-bold mt-0.5">
                       Order #{order._id?.substring(0, 8)}
+                      {order.status === 'Delivered'
+                        ? ` • ✅ ${
+                            order.actualDeliveryMinutes ||
+                            Math.max(
+                              1,
+                              Math.round(
+                                (new Date(order.deliveredAt || order.updatedAt).getTime() -
+                                  new Date(order.createdAt).getTime()) /
+                                  60000
+                              )
+                            )
+                          }m`
+                        : isLive
+                        ? ` • ⏱️ ~${order.estimatedDeliveryMinutes || 35}m`
+                        : ''}
                     </Text>
                   </View>
                     <View className="flex-row items-center gap-1.5">

@@ -78,12 +78,13 @@ export const settleOrderSplits = async (orderId) => {
   const foodSubtotal = order.pricing?.foodSubtotal || (order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const packagingFee = order.pricing?.packagingFee !== undefined ? order.pricing.packagingFee : 20;
   const deliveryFee = order.pricing?.deliveryFee !== undefined ? order.pricing.deliveryFee : 30;
+  const baseDeliveryFee = order.pricing?.baseDeliveryFee || (deliveryFee > 0 ? deliveryFee : 30);
   const commissionRate = order.settlement?.commissionRate || 10;
   const platformCommission = Math.round((foodSubtotal * commissionRate) / 100);
   const restaurantAmount = foodSubtotal + packagingFee - platformCommission;
   const deliveryPartnerAmount = (order.settlement?.deliveryPartnerAmount && order.settlement.deliveryPartnerAmount > 0)
     ? order.settlement.deliveryPartnerAmount
-    : (deliveryFee > 0 ? deliveryFee : 30);
+    : baseDeliveryFee;
   const platformFee = order.pricing?.platformFee !== undefined ? order.pricing.platformFee : 5;
   const platformProfit = platformFee + platformCommission;
 
